@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Programme Modeller</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@400;500&display=swap');
+  :root {
+    --bg:#0f1117;--surface:#181c26;--surface2:#1f2433;--border:#2a3045;
+    --accent:#5b7fff;--accent2:#a78bfa;--warn:#f59e0b;--danger:#ef4444;
+    --success:#22c55e;--text:#e8eaf0;--muted:#6b7694;
+    --mono:'DM Mono',monospace;--display:'Syne',sans-serif;--body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:14px;min-height:100vh;}
+  header{padding:18px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--surface);}
+  header h1{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.5px;}
+  header .chip{font-family:var(--mono);font-size:10px;color:var(--accent);background:rgba(91,127,255,.12);padding:3px 8px;border-radius:4px;}
+  .layout{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 57px);}
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+  .sb{padding:14px 16px;border-bottom:1px solid var(--border);}
+  .sb h2{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .main{display:flex;flex-direction:column;overflow:hidden;}
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;}
+  .tab{font-family:var(--display);font-weight:600;font-size:13px;padding:13px 14px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;}
+  .tab:hover{color:var(--text);}.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .view{display:none;flex:1;overflow:auto;padding:22px;}.view.active{display:block;}
+  .card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:7px;cursor:pointer;transition:border-color .15s;position:relative;}
+  .card:hover{border-color:var(--accent);}.card.selected{border-color:var(--accent);background:rgba(91,127,255,.07);}
+  .card-hdr{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .card-name{font-family:var(--display);font-weight:700;font-size:12px;flex:1;}
+  .card-sub{font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .card-meta{display:flex;gap:6px;flex-wrap:wrap;}
+  .badge{font-family:var(--mono);font-size:10px;padding:2px 5px;border-radius:3px;background:var(--surface);color:var(--muted);border:1px solid var(--border);}
+  .badge.dep{color:var(--accent2);border-color:rgba(167,139,250,.3);}
+  .badge.role{color:var(--accent);border-color:rgba(91,127,255,.3);}
+  .fr{margin-bottom:9px;}
+  label{display:block;font-size:10px;font-weight:500;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.8px;}
+  input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--body);font-size:13px;padding:6px 9px;outline:none;transition:border-color .15s;}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+  select option{background:var(--bg);}
+  .btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:6px;font-family:var(--display);font-weight:600;font-size:12px;cursor:pointer;border:none;transition:all .15s;}
+  .btn-primary{background:var(--accent);color:#fff;}.btn-primary:hover{background:#4a6ef0;}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}.btn-ghost:hover{color:var(--text);border-color:var(--muted);}
+  .btn-sm{padding:3px 9px;font-size:11px;}
+  .btn-row{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;}
+  .growth-hint{background:rgba(91,127,255,.07);border:1px solid rgba(91,127,255,.2);border-radius:6px;padding:8px 10px;margin-top:6px;font-size:11px;color:var(--muted);line-height:1.5;}
+  .growth-hint strong{color:var(--accent);font-family:var(--mono);}
+  /* pipeline balance toggle */
+  .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .toggle{position:relative;width:36px;height:20px;flex-shrink:0;}
+  .toggle input{opacity:0;width:0;height:0;}
+  .toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:background .2s;}
+  .toggle input:checked+.toggle-slider{background:var(--accent);}
+  .toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;}
+  .toggle input:checked+.toggle-slider:before{transform:translateX(16px);}
+  .pl-alloc-table{width:100%;border-collapse:collapse;margin-top:8px;}
+  .pl-alloc-table td{padding:3px 0;font-size:11px;}
+  .pl-alloc-table td:first-child{font-family:var(--mono);color:var(--text);padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;}
+  .pl-alloc-table td:nth-child(2){font-family:var(--mono);color:var(--accent);text-align:right;padding-right:6px;white-space:nowrap;}
+  .pl-alloc-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:1px;}
+  .pl-alloc-fill{height:100%;border-radius:2px;background:var(--accent);opacity:.7;}
+  .cap-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin:4px 0;}
+  .cap-fill{height:100%;border-radius:3px;transition:width .3s;}
+  .gantt-wrap{overflow-x:auto;}
+  .gantt-hdr{display:flex;border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:3px;}
+  .gantt-lbl{width:200px;flex-shrink:0;font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .gantt-months{display:flex;flex:1;}
+  .gantt-mo{flex:1;min-width:54px;font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;}
+  .gantt-row{display:flex;align-items:center;margin-bottom:5px;min-height:30px;}
+  .gantt-row-lbl{width:200px;flex-shrink:0;}
+  .gantt-row-lbl .pname{font-family:var(--display);font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gantt-row-lbl .psub{font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .gantt-tl{flex:1;position:relative;height:30px;}
+  .gantt-bar{position:absolute;height:20px;top:5px;border-radius:4px;display:flex;align-items:center;padding:0 7px;font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.9);font-weight:500;white-space:nowrap;overflow:hidden;}
+  .gcol{position:absolute;top:0;bottom:0;border-left:1px solid var(--border);opacity:.4;}
+  .alert{padding:9px 11px;border-radius:6px;margin-bottom:7px;font-size:12px;}
+  .alert-warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--warn);}
+  .alert-ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--success);}
+  .alert-info{background:rgba(91,127,255,.08);border:1px solid rgba(91,127,255,.25);color:#93aaff;}
+  .sum-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px;}
+  .sum-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+  .sum-card .val{font-family:var(--display);font-weight:800;font-size:26px;}
+  .sum-card .lbl{font-size:10px;color:var(--muted);margin-top:2px;}
+  .sec{font-family:var(--display);font-weight:700;font-size:14px;margin:18px 0 10px;}
+  .month-row{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:8px;}
+  .month-lbl{font-family:var(--display);font-weight:700;font-size:13px;margin-bottom:7px;}
+  .team-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;position:relative;}
+  .team-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:13px;flex-shrink:0;}
+  .team-info{flex:1;min-width:0;}
+  .team-name{font-family:var(--display);font-weight:700;font-size:12px;}
+  .team-meta{font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .team-edit{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+  .team-edit.open{display:block;}
+  .team-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;}
+  .field-error{font-size:11px;color:var(--danger);margin-top:4px;display:none;}
+  .field-error.show{display:block;}
+  .role-row{display:grid;grid-template-columns:1fr 70px 28px;gap:5px;margin-bottom:5px;align-items:center;}
+  ::-webkit-scrollbar{width:5px;height:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+  .del-btn{position:absolute;top:7px;right:7px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 5px;border-radius:4px;opacity:0;transition:opacity .15s;}
+  .card:hover .del-btn,.team-card:hover .del-btn{opacity:1;}
+  .del-btn:hover{color:var(--danger);background:rgba(239,68,68,.1);}
+  .msl{max-height:110px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px;}
+  .msl-item{display:flex;align-items:center;gap:7px;padding:3px 5px;border-radius:4px;cursor:pointer;font-size:12px;}
+  .msl-item:hover{background:var(--surface2);}
+  .msl-item input[type=checkbox]{accent-color:var(--accent);}
+  .empty{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+  .empty strong{display:block;font-family:var(--display);font-size:15px;color:var(--text);margin-bottom:5px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{text-align:left;padding:5px 7px;font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);}
+  td{padding:7px;border-bottom:1px solid var(--border);}
+  .vel-preview{display:flex;gap:3px;margin-top:6px;align-items:flex-end;height:28px;}
+  .vel-bar{border-radius:2px 2px 0 0;min-width:6px;flex:1;transition:height .3s;}
+  /* pipeline balance stacked bar in gantt */
+  .pl-cap-strip{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:2px 0;}
+  /* filter bar */
+  .filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .filter-bar-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;white-space:nowrap;}
+  .filter-chips{display:flex;gap:4px;flex-wrap:wrap;flex:1;}
+  .chip-btn{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;}
+  .chip-btn:hover{border-color:var(--accent);color:var(--text);}
+  .chip-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .chip-btn.pipeline-chip.active{color:#fff;}
+  .filter-divider{width:1px;height:18px;background:var(--border);flex-shrink:0;}
+  .filter-clear{font-family:var(--mono);font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;}
+  .filter-clear:hover{color:var(--danger);}
+  .filter-active-hint{font-family:var(--mono);font-size:10px;color:var(--accent2);}
+</style>
+</head>
+<body>
+<header>
+  <h1>Programme Modeller</h1>
+  <span class="chip">BETA</span>
+</header>
+<div class="layout">
+  <div class="sidebar">
+
+    <!-- Settings -->
+    <div class="sb">
+      <h2>Settings</h2>
+      <div class="fr"><label>Planning horizon (months)</label><input type="number" id="horizonMonths" value="12" min="3" max="36" oninput="render()"></div>
+      <div class="fr"><label>Start month</label><input type="month" id="startMonth" oninput="render()"></div>
+      <div class="fr">
+        <label>Velocity growth rate (%/month)
+          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"> — compound increase per member</span>
+        </label>
+        <input type="number" id="velocityGrowthRate" value="0" min="0" max="20" step="0.5" oninput="updateGrowthPreview();render()">
+        <div class="growth-hint" id="growthHint" style="display:none"></div>
+        <div class="vel-preview" id="velPreview"></div>
+      </div>
+
+      <!-- Pipeline capacity balancing -->
+      <div class="fr" style="margin-top:4px">
+        <label>Pipeline capacity balancing</label>
+        <div class="toggle-row">
+          <label class="toggle"><input type="checkbox" id="balancePipelines" onchange="render()"><span class="toggle-slider"></span></label>
+          <span style="font-size:12px;color:var(--muted)">Distribute capacity proportionally</span>
+        </div>
+        <div id="pipelineAllocPanel" style="display:none">
+          <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:6px">
+            Each pipeline is ring-fenced a share of monthly capacity equal to its proportion of total effort. Unused quota rolls over within the month.
+          </div>
+          <div id="pipelineAllocBreakdown"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CSV Import -->
+    <div class="sb">
+      <h2>Import CSV</h2>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
+        Projects CSV columns:<br>
+        <span style="font-family:var(--mono);color:var(--accent2);font-size:10px">name, pipeline, priority, earliest_start, color, blocks, roles</span><br>
+        <span style="font-family:var(--mono);color:var(--muted);font-size:10px">roles format: <em>Dev:60;Design:40</em></span>
+      </div>
+      <div id="csvDropZone" onclick="document.getElementById('csvFileInput').click()"
+        style="border:1.5px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;"
+        ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+        ondragleave="this.style.borderColor='var(--border)'"
+        ondrop="handleCsvDrop(event)">
+        <div style="font-size:18px;margin-bottom:3px">📂</div>
+        <div style="font-size:11px;color:var(--muted)">Drop CSV or click to browse</div>
+      </div>
+      <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="handleCsvFile(this)">
+      <div id="csvError" style="display:none;margin-top:7px" class="alert alert-warn"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">↓ Template</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearProjects()">✕ Clear projects</button>
+      </div>
+    </div>
+
+    <!-- Team -->
+    <div class="sb">
+      <h2>Team (<span id="teamCount">0</span>)</h2>
+      <div class="fr"><label>Name</label><input type="text" id="tmName" placeholder="e.g. Alice"></div>
+      <div class="fr"><label>Role</label><input type="text" id="tmRole" placeholder="e.g. Developer" list="roleList"><datalist id="roleList"></datalist></div>
+      <div class="fr"><label>Base velocity (pts/month)</label><input type="number" id="tmVelocity" value="10" min="1" max="999"></div>
+      <div class="fr"><label>Max capacity (pts/month) <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">— optional ceiling</span></label><input type="number" id="tmMaxCap" placeholder="No cap" min="1" max="999"></div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="addMember()">+ Add Member</button></div>
+      <div id="tmError" class="field-error"></div>
+      <div id="teamList" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Add Project -->
+    <div class="sb">
+      <h2>Add Project</h2>
+      <div class="fr"><label>Name</label><input type="text" id="newName" placeholder="e.g. Platform Upgrade"></div>
+      <div class="fr"><label>Pipeline</label><input type="text" id="newPipeline" placeholder="e.g. Infrastructure" list="pipelineList"><datalist id="pipelineList"></datalist></div>
+      <div class="fr"><label>Priority (1=highest)</label><input type="number" id="newPriority" value="1" min="1"></div>
+      <div class="fr"><label>Earliest start (month offset)</label><input type="number" id="newEarliestStart" value="0" min="0"></div>
+      <div class="fr"><label>Colour</label><input type="color" id="newColor" value="#5b7fff" style="height:32px;padding:2px 5px;"></div>
+      <div class="fr">
+        <label>Role effort split <span style="font-weight:400;text-transform:none;letter-spacing:0">(role → % of total)</span></label>
+        <div id="roleRows"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:5px" onclick="addRoleRow()">+ Add role</button>
+      </div>
+      <div class="fr"><label>Blocks (must finish before)</label><div class="msl" id="depBlocksList"></div></div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="addProject()">+ Add Project</button></div>
+    </div>
+
+    <!-- Project list -->
+    <div class="sb" style="flex:1">
+      <h2>Projects (<span id="projectCount">0</span>)</h2>
+      <div class="fr" style="margin-bottom:7px">
+        <select id="pipelineFilter" onchange="render()" style="font-size:12px;padding:4px 7px">
+          <option value="">All pipelines</option>
+        </select>
+      </div>
+      <div id="projectList"></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('gantt',this)">Gantt</button>
+      <button class="tab" onclick="switchTab('team',this)">Team</button>
+      <button class="tab" onclick="switchTab('summary',this)">Summary</button>
+    </div>
+    <div class="filter-bar" id="filterBar">
+      <span class="filter-bar-label">Pipeline</span>
+      <div class="filter-chips" id="filterPipelineChips"></div>
+      <div class="filter-divider"></div>
+      <span class="filter-bar-label">Role</span>
+      <div class="filter-chips" id="filterRoleChips"></div>
+      <button class="filter-clear" id="filterClearBtn" onclick="clearFilters()" style="display:none">✕ Clear</button>
+    </div>
+    <div id="view-gantt" class="view active"><div id="ganttContent"></div></div>
+    <div id="view-team" class="view"><div id="teamContent"></div></div>
+    <div id="view-summary" class="view"><div id="summaryContent"></div></div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const PALETTE = ['#5b7fff','#a78bfa','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#f97316','#84cc16','#8b5cf6'];
+
+let teamMembers = [
+  { id:'t1', name:'Alice', role:'Developer', velocity:12, maxCap:null, color:'#5b7fff' },
+  { id:'t2', name:'Bob', role:'Developer', velocity:10, maxCap:null, color:'#a78bfa' },
+  { id:'t3', name:'Carla', role:'Designer', velocity:8, maxCap:null, color:'#22c55e' },
+  { id:'t4', name:'David', role:'QA', velocity:9, maxCap:null, color:'#f59e0b' },
+  { id:'t5', name:'Emma', role:'Developer', velocity:11, maxCap:null, color:'#ef4444' },
+];
+
+let projects = [
+  { id:1, name:'Discovery & Research', pipeline:'Infrastructure', priority:1, earliestStart:0, color:'#5b7fff', blocks:[], roles:[{role:'Developer',pct:60},{role:'Designer',pct:40}] },
+  { id:2, name:'Platform Upgrade', pipeline:'Infrastructure', priority:2, earliestStart:0, color:'#a78bfa', blocks:[], roles:[{role:'Developer',pct:80},{role:'QA',pct:20}] },
+  { id:3, name:'Customer Portal', pipeline:'Customer Experience',priority:3, earliestStart:2, color:'#22c55e', blocks:[1], roles:[{role:'Developer',pct:60},{role:'Designer',pct:40}] },
+  { id:4, name:'Data Migration', pipeline:'Infrastructure', priority:2, earliestStart:0, color:'#f59e0b', blocks:[2], roles:[{role:'Developer',pct:70},{role:'QA',pct:30}] },
+  { id:5, name:'Mobile App v2', pipeline:'Customer Experience',priority:4, earliestStart:3, color:'#ef4444', blocks:[3], roles:[{role:'Developer',pct:50},{role:'Designer',pct:30},{role:'QA',pct:20}] },
+];
+let nextId = 6;
+let nextTmId = 6;
+let selectedId = null;
+let filterPipelines = new Set(); // empty = show all
+let filterRoles = new Set();     // empty = show all
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.getElementById('startMonth').value = (()=>{
+  const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+})();
+
+// ─── Velocity growth helpers ──────────────────────────────────────────────────
+// Returns the effective velocity for a member at a given month offset, applying
+// compound growth and then clamping to the member's optional max capacity ceiling.
+function effectiveVelocity(member, monthOffset) {
+  const rate = parseFloat(document.getElementById('velocityGrowthRate').value) || 0;
+  let vel = rate === 0 ? member.velocity : member.velocity * Math.pow(1 + rate / 100, monthOffset);
+  if (member.maxCap != null && member.maxCap > 0) vel = Math.min(vel, member.maxCap);
+  return vel;
+}
+function totalVelocityAtMonth(monthOffset) {
+  return teamMembers.reduce((s, m) => s + effectiveVelocity(m, monthOffset), 0);
+}
+function updateGrowthPreview() {
+  const rate = parseFloat(document.getElementById('velocityGrowthRate').value) || 0;
+  const horizon = parseInt(document.getElementById('horizonMonths').value) || 12;
+  const hintEl = document.getElementById('growthHint');
+  const previewEl = document.getElementById('velPreview');
+  if (rate === 0 || teamMembers.length === 0) { hintEl.style.display='none'; previewEl.innerHTML=''; return; }
+  const ex = teamMembers[0];
+  const vEnd = effectiveVelocity(ex, horizon - 1);
+  const capNote = ex.maxCap != null && ex.maxCap > 0 && vEnd >= ex.maxCap ? ` (capped at ${ex.maxCap})` : '';
+  hintEl.style.display = 'block';
+  hintEl.innerHTML = `e.g. <strong>${ex.name}</strong>: ${ex.velocity} pts/mo → <strong>${vEnd.toFixed(1)}</strong> pts/mo by month ${horizon}${capNote}`;
+  const vals = [];
+  for (let m=0;m<Math.min(horizon,12);m++) vals.push(totalVelocityAtMonth(m));
+  const max = Math.max(...vals);
+  previewEl.innerHTML = vals.map((v,i)=>{
+    const h=Math.round((v/max)*24)+4, alpha=0.3+(i/vals.length)*0.7;
+    return `<div class="vel-bar" style="height:${h}px;background:var(--accent);opacity:${alpha}" title="${getMonthLabel(i)}: ${v.toFixed(1)} pts/mo total"></div>`;
+  }).join('');
+}
+
+// ─── Pipeline allocation helpers ──────────────────────────────────────────────
+// Returns { pipelineName → fraction (0–1) } based on each pipeline's share of total project points.
+// Also handles override mode where user manually sets weights.
+function pipelineAllocFractions() {
+  const pipelinePts = {};
+  for (const p of projects) {
+    const pl = p.pipeline || '(No pipeline)';
+    pipelinePts[pl] = (pipelinePts[pl] || 0) + (p.points || 0);
+  }
+  const total = Object.values(pipelinePts).reduce((s,v)=>s+v, 0);
+  if (total === 0) return {};
+  const fracs = {};
+  for (const [pl, pts] of Object.entries(pipelinePts)) fracs[pl] = pts / total;
+  return fracs;
+}
+
+// Unique colour per pipeline (derived from first project's colour, or palette index)
+function pipelineColor(name) {
+  const p = projects.find(x => (x.pipeline||'(No pipeline)') === name);
+  return p ? p.color : PALETTE[0];
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getMonthLabel(offset){
+  const base=document.getElementById('startMonth').value||`${new Date().getFullYear()}-01`;
+  const [y,m]=base.split('-').map(Number);
+  const d=new Date(y,m-1+offset,1);
+  return d.toLocaleString('default',{month:'short',year:'2-digit'});
+}
+function roles(){return [...new Set(teamMembers.map(m=>m.role))].sort();}
+function membersByRole(role){return teamMembers.filter(m=>m.role===role);}
+function roleVelocity(role){return membersByRole(role).reduce((s,m)=>s+m.velocity,0);}
+
+// ─── Scheduling engine ────────────────────────────────────────────────────────
+function scheduleWithDeps(){
+  const horizon = parseInt(document.getElementById('horizonMonths').value)||12;
+  const balanceEnabled = document.getElementById('balancePipelines').checked;
+
+  // Per-member remaining capacity each month, applying velocity growth
+  const memberCap = {};
+  for(const m of teamMembers){
+    memberCap[m.id] = Array.from({length: horizon+12}, (_,mo) => effectiveVelocity(m, mo));
+  }
+
+  const totalCapPerMonth = teamMembers.reduce((s,m)=>s+m.velocity,0);
+  const totalCapByMonth = Array.from({length: horizon}, (_,mo) => totalVelocityAtMonth(mo));
+
+  // ── Pipeline capacity ring-fencing ──────────────────────────────────────────
+  // When balancing is on, each pipeline gets a monthly quota = fraction * totalCap.
+  // Within each month we track how much has been spent per pipeline.
+  // After all pipelines have consumed their quota, any leftover rolls to unconstrained.
+  const plFracs = balanceEnabled ? pipelineAllocFractions() : {};
+  // pipelineMonthBudget[pl][m] = pts available to this pipeline this month
+  // We'll compute these on the fly per month inside the scheduler.
+
+  const sorted=[...projects].sort((a,b)=>a.priority-b.priority||a.id-b.id);
+  const finishMonth={};
+  const result={};
+  const scheduled=new Set();
+  const queue=[...sorted];
+  let iters=0;
+
+  // Track per-pipeline per-month spending (for quota enforcement)
+  // plSpent[pl][month] = pts consumed by this pipeline so far
+  const plSpent = {};
+  for (const pl of Object.keys(plFracs)) plSpent[pl] = Array(horizon+12).fill(0);
+
+  while(queue.length>0 && iters<2000){
+    iters++;
+    const p = queue.shift();
+
+    const blockers = projects.filter(q=>q.blocks&&q.blocks.includes(p.id));
+    if(!blockers.every(q=>scheduled.has(q.id))){ queue.push(p); continue; }
+
+    let earliest = p.earliestStart||0;
+    for(const bl of blockers){
+      if(finishMonth[bl.id]!==undefined) earliest=Math.max(earliest,finishMonth[bl.id]+1);
+    }
+
+    const totalPts = p.points || 20;
+    const pRoles = p.roles && p.roles.length ? p.roles : [{role:'Any',pct:100}];
+    const pl = p.pipeline || '(No pipeline)';
+
+    const roleRemaining = {};
+    for(const r of pRoles) roleRemaining[r.role] = totalPts * r.pct / 100;
+
+    const alloc = {};
+    result[p.id] = {id:p.id, months:[], alloc:{}, earliest, roleDemand:{}};
+
+    const noMembers = pRoles.filter(r=>r.role!=='Any'&&membersByRole(r.role).length===0);
+
+    let projectDone = false;
+    for(let m=earliest; m<horizon+12 && !projectDone; m++){
+      const stillNeeded = pRoles.filter(r=>roleRemaining[r.role]>0.01);
+      if(stillNeeded.length===0){projectDone=true;break;}
+
+      // Compute how much capacity remains available to this pipeline this month
+      let plBudgetRemaining = Infinity;
+      if(balanceEnabled && plFracs[pl] !== undefined){
+        const monthTotalCap = totalVelocityAtMonth(m);
+        const quota = plFracs[pl] * monthTotalCap;
+        plBudgetRemaining = Math.max(0, quota - (plSpent[pl]?.[m]||0));
+      }
+      if(plBudgetRemaining < 0.01){ 
+        // Budget exhausted for this pipeline this month — skip to next month
+        // but still count the month as visited so we don't stall
+        continue;
+      }
+
+      let anyWorkDone = false;
+      let monthTotalUsed = 0;
+      for(const r of stillNeeded){
+        const needed = roleRemaining[r.role];
+        const members = r.role==='Any' ? teamMembers : membersByRole(r.role);
+        if(members.length===0) continue;
+        let roleGot = 0;
+        for(const mem of members){
+          if(memberCap[mem.id][m]<=0) continue;
+          // Also cap by remaining pipeline budget
+          const budgetLeft = plBudgetRemaining - monthTotalUsed;
+          if(budgetLeft <= 0.001) break;
+          const use = Math.min(memberCap[mem.id][m], needed - roleGot, budgetLeft);
+          if(use<=0.001) continue;
+          memberCap[mem.id][m] -= use;
+          roleGot += use;
+          monthTotalUsed += use;
+          if(!alloc[m]) alloc[m]={};
+          alloc[m][mem.id] = (alloc[m][mem.id]||0) + use;
+          anyWorkDone = true;
+        }
+        roleRemaining[r.role] -= roleGot;
+        if(roleRemaining[r.role]<0) roleRemaining[r.role]=0;
+      }
+
+      // Record pipeline spending for this month
+      if(balanceEnabled && monthTotalUsed > 0 && plSpent[pl]){
+        plSpent[pl][m] = (plSpent[pl][m]||0) + monthTotalUsed;
+      }
+
+      if(anyWorkDone){
+        const totalGot = Object.values(alloc[m]||{}).reduce((s,v)=>s+v,0);
+        result[p.id].months.push({month:m, pts:Math.round(totalGot*10)/10});
+        finishMonth[p.id] = m;
+        result[p.id].alloc[m] = alloc[m]||{};
+      }
+    }
+
+    const overflowPts = Object.values(roleRemaining).reduce((s,v)=>s+v,0);
+    if(overflowPts>0.5){
+      result[p.id].overflow = Math.round(overflowPts);
+      result[p.id].overflowByRole = roleRemaining;
+    }
+    result[p.id].noMembers = noMembers.map(r=>r.role);
+
+    scheduled.add(p.id);
+  }
+
+  // Per-member monthly usage
+  const memberMonthlyUsed = {};
+  for(const mem of teamMembers){
+    memberMonthlyUsed[mem.id] = Array(horizon).fill(0);
+    for(let m=0;m<horizon;m++){
+      const effCap = effectiveVelocity(mem, m);
+      memberMonthlyUsed[mem.id][m] = effCap - (memberCap[mem.id][m]||0);
+    }
+  }
+
+  const monthUsed = Array(horizon).fill(0);
+  for(const mem of teamMembers){
+    for(let m=0;m<horizon;m++) monthUsed[m] += memberMonthlyUsed[mem.id][m];
+  }
+
+  // Per-pipeline per-month spending (for Gantt display)
+  const pipelineMonthSpend = {};
+  for(const p of projects){
+    const pl = p.pipeline || '(No pipeline)';
+    if(!pipelineMonthSpend[pl]) pipelineMonthSpend[pl] = Array(horizon).fill(0);
+    const s = result[p.id];
+    if(!s) continue;
+    for(const {month:mo, pts} of s.months){
+      if(mo < horizon) pipelineMonthSpend[pl][mo] = (pipelineMonthSpend[pl][mo]||0) + pts;
+    }
+  }
+
+  return{scheduled, monthUsed, memberMonthlyUsed, finishMonth, horizon,
+    totalCapPerMonth, totalCapByMonth, plFracs, pipelineMonthSpend, balanceEnabled};
+}
+
+// ─── Filters ─────────────────────────────────────────────────────────────────
+function renderFilterBar(){
+  const allPipelines=[...new Set(projects.map(p=>p.pipeline||'(No pipeline)'))].sort();
+  const allRoles=roles();
+
+  const pcEl=document.getElementById('filterPipelineChips');
+  const rcEl=document.getElementById('filterRoleChips');
+  const clearBtn=document.getElementById('filterClearBtn');
+
+  pcEl.innerHTML=allPipelines.map(pl=>{
+    const col=pipelineColor(pl);
+    const active=filterPipelines.has(pl);
+    return `<button class="chip-btn pipeline-chip${active?' active':''}"
+      style="${active?`background:${col};border-color:${col}`:`border-color:${col}33;color:${col}`}"
+      onclick="toggleFilterPipeline('${pl.replace(/'/g,"\\'")}')">
+      ${pl}
+    </button>`;
+  }).join('');
+
+  rcEl.innerHTML=allRoles.map(r=>{
+    const active=filterRoles.has(r);
+    return `<button class="chip-btn${active?' active':''}" onclick="toggleFilterRole('${r.replace(/'/g,"\\'")}')">
+      ${r}
+    </button>`;
+  }).join('');
+
+  const anyActive=filterPipelines.size>0||filterRoles.size>0;
+  clearBtn.style.display=anyActive?'inline-block':'none';
+}
+
+function toggleFilterPipeline(pl){
+  if(filterPipelines.has(pl)) filterPipelines.delete(pl); else filterPipelines.add(pl);
+  render();
+}
+function toggleFilterRole(r){
+  if(filterRoles.has(r)) filterRoles.delete(r); else filterRoles.add(r);
+  render();
+}
+function clearFilters(){ filterPipelines.clear(); filterRoles.clear(); render(); }
+
+// Returns true if a project should be visible given current filters
+function projectMatchesFilter(p){
+  if(filterPipelines.size>0 && !filterPipelines.has(p.pipeline||'(No pipeline)')) return false;
+  if(filterRoles.size>0){
+    const pRoleNames=new Set((p.roles||[]).map(r=>r.role));
+    if(![...filterRoles].some(r=>pRoleNames.has(r))) return false;
+  }
+  return true;
+}
+
+// Returns true if a team member should be visible given current filters
+function memberMatchesFilter(m){
+  if(filterPipelines.size>0){
+    // Show members assigned to any project in selected pipelines
+    const inPipeline=projects.some(p=>filterPipelines.has(p.pipeline||'(No pipeline)')&&(p.roles||[]).some(r=>r.role===m.role));
+    if(!inPipeline) return false;
+  }
+  if(filterRoles.size>0 && !filterRoles.has(m.role)) return false;
+  return true;
+}
+function render(){
+  renderFilterBar();
+  renderSidebar();
+  renderGantt();
+  renderTeam();
+  renderSummary();
+  updateGrowthPreview();
+}
+
+function renderSidebar(){
+  document.getElementById('teamCount').textContent=teamMembers.length;
+  document.getElementById('projectCount').textContent=projects.length;
+  document.getElementById('roleList').innerHTML=roles().map(r=>`<option value="${r}">`).join('');
+
+  const pipelines=[...new Set(projects.map(p=>p.pipeline).filter(Boolean))].sort();
+  document.getElementById('pipelineList').innerHTML=pipelines.map(pl=>`<option value="${pl}">`).join('');
+  const filterEl=document.getElementById('pipelineFilter');
+  const cur=filterEl.value;
+  filterEl.innerHTML='<option value="">All pipelines</option>'+pipelines.map(pl=>`<option value="${pl}"${cur===pl?' selected':''}>${pl}</option>`).join('');
+
+  document.getElementById('depBlocksList').innerHTML=projects.map(p=>`
+    <label class="msl-item"><input type="checkbox" value="${p.id}">
+    <span style="color:${p.color}">${p.name}</span></label>`).join('');
+
+  document.querySelectorAll('.role-row select').forEach(sel=>{
+    const c=sel.value;
+    sel.innerHTML=roles().map(r=>`<option${r===c?' selected':''}>${r}</option>`).join('');
+  });
+  if(document.getElementById('roleRows').children.length===0) addRoleRow();
+
+  // Pipeline alloc panel
+  const balanceOn = document.getElementById('balancePipelines').checked;
+  document.getElementById('pipelineAllocPanel').style.display = balanceOn ? 'block' : 'none';
+  if(balanceOn){
+    const fracs = pipelineAllocFractions();
+    const totalPts = projects.reduce((s,p)=>s+(p.points||0),0);
+    if(Object.keys(fracs).length === 0){
+      document.getElementById('pipelineAllocBreakdown').innerHTML = '<div style="color:var(--muted);font-size:11px">No projects yet.</div>';
+    } else {
+      document.getElementById('pipelineAllocBreakdown').innerHTML =
+        '<table class="pl-alloc-table">' +
+        Object.entries(fracs).sort((a,b)=>b[1]-a[1]).map(([pl,frac])=>{
+          const col = pipelineColor(pl);
+          const pct = Math.round(frac*100);
+          const pts = Math.round(frac*totalPts);
+          return `<tr>
+            <td title="${pl}">${pl}</td>
+            <td style="color:${col}">${pct}%</td>
+            <td style="width:80px">
+              <div class="pl-alloc-bar"><div class="pl-alloc-fill" style="width:${pct}%;background:${col}"></div></div>
+            </td>
+          </tr>`;
+        }).join('') +
+        '</table>' +
+        `<div style="font-size:10px;color:var(--muted);margin-top:5px;font-family:var(--mono)">Based on ${totalPts} total pts across ${projects.length} projects</div>`;
+    }
+  }
+
+  // Team list
+  const rate = parseFloat(document.getElementById('velocityGrowthRate').value) || 0;
+  const horizon = parseInt(document.getElementById('horizonMonths').value) || 12;
+  const tl=document.getElementById('teamList');
+  if(teamMembers.length===0){tl.innerHTML='<div class="empty" style="padding:16px"><strong>No team yet</strong>Add members above.</div>';return;}
+  tl.innerHTML=teamMembers.map(m=>{
+    const projVel = rate > 0 ? ` → ${effectiveVelocity(m,horizon-1).toFixed(1)}` : '';
+    const capStr = m.maxCap != null && m.maxCap > 0 ? ` · <span style="color:var(--warn)">cap ${m.maxCap}</span>` : '';
+    return `<div class="team-card" style="flex-direction:column;align-items:stretch;cursor:default">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="team-avatar" style="background:${m.color}22;color:${m.color};flex-shrink:0">${m.name[0]}</div>
+        <div class="team-info">
+          <div class="team-name">${m.name}</div>
+          <div class="team-meta">${m.role} · ${m.velocity}${projVel} pts/mo${rate>0?` <span style="color:var(--accent);font-size:9px">(+${rate}%/mo)</span>`:''}${capStr}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleEditMember('${m.id}')" style="flex-shrink:0;margin-left:auto">Edit</button>
+        <button class="del-btn" style="position:static;opacity:1;padding:3px 6px" onclick="deleteMember('${m.id}')">✕</button>
+      </div>
+      <div class="team-edit" id="edit-${m.id}">
+        <div class="team-edit-grid">
+          <div class="fr" style="margin-bottom:0"><label>Name</label><input id="edit-name-${m.id}" value="${m.name}" style="font-size:12px;padding:5px 8px"></div>
+          <div class="fr" style="margin-bottom:0"><label>Role</label><input id="edit-role-${m.id}" value="${m.role}" list="roleList" style="font-size:12px;padding:5px 8px"></div>
+          <div class="fr" style="margin-bottom:0"><label>Base velocity</label><input type="number" id="edit-vel-${m.id}" value="${m.velocity}" min="1" max="999" style="font-size:12px;padding:5px 8px"></div>
+          <div class="fr" style="margin-bottom:0"><label>Max capacity</label><input type="number" id="edit-cap-${m.id}" value="${m.maxCap!=null?m.maxCap:''}" placeholder="No cap" min="1" max="999" style="font-size:12px;padding:5px 8px"></div>
+        </div>
+        <div id="edit-err-${m.id}" class="field-error"></div>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="btn btn-primary btn-sm" onclick="saveMember('${m.id}')">Save</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleEditMember('${m.id}')">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const pl=document.getElementById('projectList');
+  if(projects.length===0){pl.innerHTML='<div class="empty"><strong>No projects</strong>Add one above.</div>';return;}
+  const activeFilter=filterEl.value;
+  const visible=activeFilter?projects.filter(p=>p.pipeline===activeFilter):projects;
+  const grouped={};
+  for(const p of visible){const k=p.pipeline||'(No pipeline)';if(!grouped[k])grouped[k]=[];grouped[k].push(p);}
+  pl.innerHTML=Object.entries(grouped).map(([pl2,ps])=>`
+    <div style="margin-bottom:3px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:3px 2px 5px">${pl2}</div>
+      ${ps.map(p=>{
+        const deps=projects.filter(q=>q.blocks&&q.blocks.includes(p.id));
+        const roleStr=(p.roles||[]).map(r=>`${r.role} ${r.pct}%`).join(', ');
+        // Build blocks checkboxes for this project's edit form
+        const blocksHtml=projects.filter(q=>q.id!==p.id).map(q=>`
+          <label class="msl-item"><input type="checkbox" data-proj="${p.id}" value="${q.id}"${(p.blocks||[]).includes(q.id)?' checked':''}>
+          <span style="color:${q.color}">${q.name}</span></label>`).join('');
+        // Build role rows for edit form
+        const editRoleRows=(p.roles||[]).map((r,i)=>`
+          <div class="role-row" id="ep-rolerow-${p.id}-${i}">
+            <select style="font-size:11px;padding:4px 6px">${roles().map(ro=>`<option${ro===r.role?' selected':''}>${ro}</option>`).join('')}</select>
+            <input type="number" value="${r.pct}" min="1" max="100" placeholder="%" style="font-size:11px;padding:4px 6px">
+            <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" style="padding:2px 5px;font-size:13px;color:var(--danger)">✕</button>
+          </div>`).join('');
+        return `<div class="card${selectedId===p.id?' selected':''}" onclick="selectProject(${p.id})" style="cursor:default">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px" onclick="selectProject(${p.id});event.stopPropagation()">
+            <div class="dot" style="background:${p.color}"></div>
+            <div class="card-name" style="flex:1">${p.name}</div>
+            <div class="card-sub">${p.points||'?'}pts</div>
+            <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();toggleEditProject(${p.id})">Edit</button>
+            <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px" onclick="event.stopPropagation();deleteProject(${p.id})">✕</button>
+          </div>
+          <div class="card-meta">
+            <span class="badge">P${p.priority}</span>
+            <span class="badge">M${p.earliestStart+1}+</span>
+            ${roleStr?`<span class="badge role">${roleStr}</span>`:''}
+            ${deps.length?`<span class="badge dep">↳ ${deps.map(d=>d.name.split(' ')[0]).join(', ')}</span>`:''}
+          </div>
+          <div class="team-edit" id="pedit-${p.id}" onclick="event.stopPropagation()">
+            <div class="team-edit-grid">
+              <div class="fr" style="margin-bottom:0"><label>Name</label><input id="pe-name-${p.id}" value="${p.name.replace(/"/g,'&quot;')}" style="font-size:12px;padding:5px 7px"></div>
+              <div class="fr" style="margin-bottom:0"><label>Pipeline</label><input id="pe-pipeline-${p.id}" value="${(p.pipeline||'').replace(/"/g,'&quot;')}" list="pipelineList" style="font-size:12px;padding:5px 7px"></div>
+              <div class="fr" style="margin-bottom:0"><label>Priority</label><input type="number" id="pe-priority-${p.id}" value="${p.priority}" min="1" style="font-size:12px;padding:5px 7px"></div>
+              <div class="fr" style="margin-bottom:0"><label>Earliest start</label><input type="number" id="pe-start-${p.id}" value="${p.earliestStart}" min="0" style="font-size:12px;padding:5px 7px"></div>
+            </div>
+            <div class="fr" style="margin:6px 0 0"><label>Colour</label><input type="color" id="pe-color-${p.id}" value="${p.color}" style="height:28px;padding:2px 4px;width:60px"></div>
+            <div class="fr" style="margin-top:6px"><label>Role effort split</label>
+              <div id="pe-roles-${p.id}">${editRoleRows}</div>
+              <button class="btn btn-ghost btn-sm" style="margin-top:4px;font-size:11px" onclick="addEditRoleRow(${p.id})">+ Role</button>
+            </div>
+            <div class="fr" style="margin-top:2px"><label>Blocks</label>
+              <div class="msl" style="max-height:80px">${blocksHtml||'<span style="font-size:11px;color:var(--muted);padding:4px">No other projects</span>'}</div>
+            </div>
+            <div id="pe-err-${p.id}" class="field-error"></div>
+            <div class="btn-row" style="margin-top:8px">
+              <button class="btn btn-primary btn-sm" onclick="saveProject(${p.id})">Save</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleEditProject(${p.id})">Cancel</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+function renderGantt(){
+  const{scheduled,monthUsed,totalCapByMonth,horizon,plFracs,pipelineMonthSpend,balanceEnabled}=scheduleWithDeps();
+  const pipelines = [...new Set(projects.map(p=>p.pipeline||'(No pipeline)'))];
+
+  let html=`<div class="gantt-wrap"><div class="gantt-hdr"><div class="gantt-lbl">Project</div><div class="gantt-months">`;
+  for(let m=0;m<horizon;m++) html+=`<div class="gantt-mo" style="min-width:54px">${getMonthLabel(m)}</div>`;
+  html+=`</div></div>`;
+
+  // Capacity heatmap row — stacked per pipeline when balancing is on
+  html+=`<div class="gantt-row"><div class="gantt-row-lbl">
+    <div class="pname" style="color:var(--muted);font-size:10px">TEAM CAP</div>
+    ${balanceEnabled?`<div class="psub" style="color:var(--accent2)">balanced</div>`:''}
+  </div><div class="gantt-tl" style="height:${balanceEnabled?16:12}px">`;
+
+  for(let m=0;m<horizon;m++){
+    const cap=totalCapByMonth[m]||0;
+    const used=monthUsed[m]||0;
+    const pct=cap>0?Math.min(100,(used/cap)*100):0;
+    const over=used>cap;
+    html+=`<div class="gcol" style="left:${(m/horizon)*100}%"></div>`;
+    if(balanceEnabled){
+      // Stacked bar: each pipeline's spend for this month
+      let stackLeft = (m/horizon)*100;
+      const sliceW = (1/horizon)*100;
+      let stackHtml = '';
+      let cumPct = 0;
+      for(const pl of pipelines){
+        const spend = (pipelineMonthSpend[pl]&&pipelineMonthSpend[pl][m])||0;
+        const plPct = cap>0?(spend/cap)*100:0;
+        const col = pipelineColor(pl);
+        if(plPct>0.1) stackHtml+=`<div title="${pl}: ${spend.toFixed(1)}pts" style="position:absolute;left:${stackLeft+cumPct/100*sliceW}%;width:${plPct/100*sliceW}%;height:10px;top:3px;background:${col};opacity:.75;border-radius:1px"></div>`;
+        cumPct+=plPct;
+      }
+      // Quota guideline ticks
+      for(const [pl,frac] of Object.entries(plFracs)){
+        const col = pipelineColor(pl);
+        const tickPct = frac*100;
+        // running sum up to this pipeline
+      }
+      html+=stackHtml;
+    } else {
+      html+=`<div title="${getMonthLabel(m)}: ${Math.round(used)}/${cap.toFixed(1)}pts" style="position:absolute;left:${(m/horizon)*100}%;width:${(1/horizon)*100}%;height:8px;top:2px;background:${over?'var(--danger)':'var(--accent)'};opacity:${.12+pct/100*.75};border-radius:2px;"></div>`;
+    }
+  }
+  html+=`</div></div>`;
+
+  // Per-pipeline quota guide row (when balancing)
+  if(balanceEnabled && Object.keys(plFracs).length>0){
+    html+=`<div class="gantt-row" style="margin-bottom:10px"><div class="gantt-row-lbl">
+      <div class="psub" style="font-size:10px;color:var(--muted)">Quota split</div>
+    </div><div class="gantt-tl" style="height:18px;position:relative">`;
+    let left=0;
+    const sortedPl = Object.entries(plFracs).sort((a,b)=>b[1]-a[1]);
+    for(const [pl,frac] of sortedPl){
+      const w = frac*100;
+      const col = pipelineColor(pl);
+      html+=`<div title="${pl}: ${Math.round(frac*100)}% of capacity" style="position:absolute;left:${left}%;width:${w}%;height:10px;top:4px;background:${col};opacity:.25;border-right:1px solid var(--bg)"></div>`;
+      html+=`<div style="position:absolute;left:${left+0.3}%;top:5px;font-family:var(--mono);font-size:9px;color:${col};white-space:nowrap;overflow:hidden;max-width:${w}%">${Math.round(frac*100)}% ${pl}</div>`;
+      left+=w;
+    }
+    html+=`</div></div>`;
+  }
+
+  // Group by pipeline — apply filters
+  const sortedP=[...projects].filter(projectMatchesFilter).sort((a,b)=>{
+    const pa=a.pipeline||'zzz',pb=b.pipeline||'zzz';
+    return pa!==pb?pa.localeCompare(pb):a.priority-b.priority||a.id-b.id;
+  });
+  const groups={};
+  for(const p of sortedP){const k=p.pipeline||'(No pipeline)';if(!groups[k])groups[k]=[];groups[k].push(p);}
+
+  for(const[pipeline,ps] of Object.entries(groups)){
+    const plFrac = plFracs[pipeline];
+    const plLabel = plFrac!==undefined ? ` · ${Math.round(plFrac*100)}% quota` : '';
+    html+=`<div class="gantt-row" style="margin-top:8px;margin-bottom:1px">
+      <div class="gantt-row-lbl">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">${pipeline}</div>
+        ${balanceEnabled&&plFrac!==undefined?`<div style="font-family:var(--mono);font-size:9px;color:${pipelineColor(pipeline)}">${Math.round(plFrac*100)}% cap</div>`:''}
+      </div>
+      <div class="gantt-tl" style="height:16px;border-bottom:1px solid var(--border)}"></div></div>`;
+
+    for(const p of ps){
+      const s=scheduled[p.id];
+      if(!s||!s.months.length) continue;
+      const segs=s.months;
+      const firstM=segs[0].month, lastM=segs[segs.length-1].month;
+      const left=(firstM/horizon)*100, width=((lastM-firstM+1)/horizon)*100;
+
+      const assignedIds=new Set();
+      Object.values(s.alloc||{}).forEach(mo=>Object.keys(mo).forEach(id=>assignedIds.add(id)));
+      const assignedMembers=teamMembers.filter(m=>assignedIds.has(m.id));
+      const avatars=assignedMembers.slice(0,4).map(m=>`<span title="${m.name} (${m.role})" style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${m.color}33;color:${m.color};font-family:var(--display);font-weight:700;font-size:9px;text-align:center;line-height:16px;margin-left:-3px;border:1px solid var(--bg)">${m.name[0]}</span>`).join('');
+
+      html+=`<div class="gantt-row">
+        <div class="gantt-row-lbl">
+          <div class="pname">${p.name}</div>
+          <div class="psub">${p.points}pts · P${p.priority}${s.noMembers&&s.noMembers.length?` ⚠ no ${s.noMembers.join(',')}`:''}</div>
+        </div>
+        <div class="gantt-tl">`;
+      for(let m=0;m<horizon;m++) html+=`<div class="gcol" style="left:${(m/horizon)*100}%"></div>`;
+      if(firstM<horizon){
+        html+=`<div class="gantt-bar" style="left:${left}%;width:${Math.min(width,100-left)}%;background:${p.color};opacity:.85" title="${p.name}: ${segs.length} months">
+          ${p.name.split(' ')[0]}${s.overflow?` ⚠`:''}
+        </div>`;
+        html+=`<div style="position:absolute;left:calc(${left}% + 2px);top:-2px;display:flex">${avatars}</div>`;
+      }
+      if(s.overflow) html+=`<div style="position:absolute;right:0;top:7px;font-family:var(--mono);font-size:10px;color:var(--warn)">⚠ ${s.overflow}pts unmet</div>`;
+      html+=`</div></div>`;
+    }
+  }
+
+  const depPairs=[];
+  for(const p of projects) if(p.blocks&&p.blocks.length) for(const bid of p.blocks){const bl=projects.find(x=>x.id===bid);if(bl)depPairs.push({from:p,to:bl});}
+  if(depPairs.length){
+    html+=`<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)"><div class="sec" style="font-size:13px;margin:0 0 7px">Dependencies</div>`;
+    for(const{from,to} of depPairs) html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:4px"><span style="font-family:var(--mono);color:${from.color}">${from.name}</span><span style="color:var(--muted)">→ must finish before</span><span style="font-family:var(--mono);color:${to.color}">${to.name}</span></div>`;
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+  document.getElementById('ganttContent').innerHTML=html;
+}
+
+function renderTeam(){
+  const{scheduled,memberMonthlyUsed,horizon,balanceEnabled,plFracs}=scheduleWithDeps();
+  const rate = parseFloat(document.getElementById('velocityGrowthRate').value) || 0;
+  let html='';
+
+  if(teamMembers.length===0){
+    document.getElementById('teamContent').innerHTML='<div class="empty"><strong>No team members</strong>Add people in the sidebar.</div>';
+    return;
+  }
+
+  if(rate > 0){
+    html+=`<div class="alert alert-ok" style="margin-bottom:14px">📈 Velocity growth active at <strong>${rate}%/month</strong> (compound).</div>`;
+  }
+  if(balanceEnabled && Object.keys(plFracs).length>0){
+    const plStr = Object.entries(plFracs).sort((a,b)=>b[1]-a[1]).map(([pl,f])=>`<span style="color:${pipelineColor(pl)}">${pl} ${Math.round(f*100)}%</span>`).join(' · ');
+    html+=`<div class="alert alert-info" style="margin-bottom:14px">⚖️ Pipeline balancing active — ${plStr}</div>`;
+  }
+
+  html+=`<div class="sec">Team Capacity by Member</div>`;
+  const visibleMembers=teamMembers.filter(memberMatchesFilter);
+  if(visibleMembers.length===0){ html+=`<div style="color:var(--muted);font-size:12px;padding:12px 0">No members match the current filter.</div>`; }
+  for(const mem of visibleMembers){
+    html+=`<div class="month-row">
+      <div class="month-lbl" style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:${mem.color}22;color:${mem.color};font-family:var(--display);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center">${mem.name[0]}</div>
+        <div>
+          <div style="font-family:var(--display);font-weight:700;font-size:13px">${mem.name}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">${mem.role} · base ${mem.velocity}pts/mo${rate>0?` · grows ${rate}%/mo`:''}${mem.maxCap!=null&&mem.maxCap>0?` · <span style="color:var(--warn)">cap ${mem.maxCap}pts</span>`:''}</div>
+        </div>
+      </div>
+      <div style="overflow-x:auto;margin-top:10px">
+        <div style="display:flex;gap:4px;min-width:max-content">`;
+    for(let m=0;m<horizon;m++){
+      const effCap=effectiveVelocity(mem,m);
+      const used=Math.min(memberMonthlyUsed[mem.id][m],effCap);
+      const pct=effCap>0?(used/effCap)*100:0;
+      const over=memberMonthlyUsed[mem.id][m]>effCap;
+      const fill=over?'var(--danger)':pct>85?'var(--warn)':'var(--accent)';
+      const active=projects.filter(p=>{const s=scheduled[p.id];return s&&s.alloc&&s.alloc[m]&&s.alloc[m][mem.id]>0;});
+      const tip=active.map(p=>`${p.name}: ${Math.round((scheduled[p.id].alloc[m][mem.id]||0)*10)/10}pts`).join('\n')||'idle';
+      html+=`<div title="${getMonthLabel(m)}\n${Math.round(used)}/${effCap.toFixed(1)}pts\n${tip}" style="width:44px;flex-shrink:0">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;margin-bottom:2px">${getMonthLabel(m)}</div>
+        <div style="height:48px;background:var(--border);border-radius:4px;overflow:hidden;position:relative">
+          <div style="position:absolute;bottom:0;width:100%;height:${pct}%;background:${fill};opacity:.8;border-radius:4px;transition:height .3s"></div>
+          ${rate>0?`<div style="position:absolute;bottom:0;width:100%;height:${Math.min(100,(mem.velocity/effCap)*100)}%;border-top:1px dashed rgba(255,255,255,0.2)"></div>`:''}
+          ${mem.maxCap!=null&&mem.maxCap>0&&effCap>mem.maxCap?`<div title="Growth capped at ${mem.maxCap}pts" style="position:absolute;bottom:0;width:100%;height:100%;border-top:2px solid rgba(245,158,11,0.6)"></div>`:''}
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:${over?'var(--danger)':'var(--muted)'};text-align:center;margin-top:2px">${Math.round(used)}</div>
+        <div style="display:flex;flex-direction:column;gap:1px;margin-top:2px">
+          ${active.map(p=>`<div style="height:3px;border-radius:2px;background:${p.color};opacity:.8"></div>`).join('')}
+        </div>
+      </div>`;
+    }
+    html+=`</div></div></div>`;
+  }
+
+  // Role capacity table
+  html+=`<div class="sec" style="margin-top:24px">Capacity by Role</div>`;
+  const roleList=roles();
+  if(roleList.length===0){html+=`<div style="color:var(--muted);font-size:12px">No roles defined.</div>`;}
+  else{
+    html+=`<table><thead><tr><th>Role</th><th>Members</th><th>Base vel/mo</th>`;
+    for(let m=0;m<Math.min(horizon,6);m++) html+=`<th>${getMonthLabel(m)}</th>`;
+    html+=`</tr></thead><tbody>`;
+    for(const role of roleList){
+      if(filterRoles.size>0 && !filterRoles.has(role)) continue;
+      const mems=membersByRole(role);
+      const vel=roleVelocity(role);
+      html+=`<tr><td style="font-family:var(--display);font-weight:600">${role}</td><td style="font-family:var(--mono)">${mems.map(m=>m.name).join(', ')}</td><td style="font-family:var(--mono)">${vel}</td>`;
+      for(let m=0;m<Math.min(horizon,6);m++){
+        const effRoleCap=mems.reduce((s,mem)=>s+effectiveVelocity(mem,m),0);
+        const used=mems.reduce((s,mem)=>s+(memberMonthlyUsed[mem.id]&&memberMonthlyUsed[mem.id][m]||0),0);
+        const over=used>effRoleCap;
+        html+=`<td style="font-family:var(--mono);color:${over?'var(--danger)':used/effRoleCap>.85?'var(--warn)':'var(--text)'}">${Math.round(used)}/${effRoleCap.toFixed(1)}</td>`;
+      }
+      html+=`</tr>`;
+    }
+    html+=`</tbody></table>`;
+  }
+
+  // Pipeline balance table (when on)
+  if(balanceEnabled && Object.keys(plFracs).length>0){
+    const{pipelineMonthSpend,totalCapByMonth}=scheduleWithDeps();
+    html+=`<div class="sec" style="margin-top:24px">Pipeline Capacity Distribution</div>`;
+    html+=`<table><thead><tr><th>Pipeline</th><th>Quota</th>`;
+    for(let m=0;m<Math.min(horizon,6);m++) html+=`<th>${getMonthLabel(m)} used/quota</th>`;
+    html+=`</tr></thead><tbody>`;
+    for(const [pl,frac] of Object.entries(plFracs).sort((a,b)=>b[1]-a[1])){
+      const col=pipelineColor(pl);
+      html+=`<tr><td style="color:${col};font-family:var(--display);font-weight:600">${pl}</td><td style="font-family:var(--mono);color:${col}">${Math.round(frac*100)}%</td>`;
+      for(let m=0;m<Math.min(horizon,6);m++){
+        const quota=frac*totalCapByMonth[m];
+        const spend=(pipelineMonthSpend[pl]&&pipelineMonthSpend[pl][m])||0;
+        const over=spend>quota+0.5;
+        const under=spend<quota*0.5;
+        html+=`<td style="font-family:var(--mono);color:${over?'var(--danger)':under&&spend>0?'var(--warn)':'var(--text)'}">${spend.toFixed(1)}/${quota.toFixed(1)}</td>`;
+      }
+      html+=`</tr>`;
+    }
+    html+=`</tbody></table>`;
+  }
+
+  document.getElementById('teamContent').innerHTML=html;
+}
+
+function renderSummary(){
+  const{scheduled,monthUsed,totalCapPerMonth,totalCapByMonth,horizon,balanceEnabled,plFracs,pipelineMonthSpend}=scheduleWithDeps();
+  const rate = parseFloat(document.getElementById('velocityGrowthRate').value) || 0;
+  const totalPts=projects.reduce((s,p)=>s+(p.points||0),0);
+  const overflowing=projects.filter(p=>scheduled[p.id]?.overflow).length;
+  const noMemberProjects=projects.filter(p=>scheduled[p.id]?.noMembers?.length>0);
+  const availPts=Math.round(totalCapByMonth.reduce((s,v)=>s+v,0));
+
+  let html=`<div class="sum-grid">
+    <div class="sum-card"><div class="val">${projects.length}</div><div class="lbl">Projects</div></div>
+    <div class="sum-card"><div class="val">${teamMembers.length}</div><div class="lbl">Team members</div></div>
+    <div class="sum-card"><div class="val">${totalPts}</div><div class="lbl">Total effort (pts)</div></div>
+    <div class="sum-card"><div class="val">${availPts}</div><div class="lbl">Team capacity (${horizon}mo${rate>0?`, +${rate}%/mo`:''})</div></div>
+    <div class="sum-card"><div class="val" style="color:${overflowing?'var(--warn)':'var(--success)'}">${overflowing}</div><div class="lbl">Undeliverable</div></div>
+  </div>`;
+
+  if(filterPipelines.size>0||filterRoles.size>0){
+    const parts=[];
+    if(filterPipelines.size>0) parts.push([...filterPipelines].join(', '));
+    if(filterRoles.size>0) parts.push('roles: '+[...filterRoles].join(', '));
+    html+=`<div class="alert alert-info" style="margin-bottom:12px">🔍 Filtered by ${parts.join(' · ')} — <button onclick="clearFilters()" style="background:none;border:none;color:inherit;cursor:pointer;text-decoration:underline;font-size:inherit">clear</button></div>`;
+  }
+
+  if(rate > 0){
+    const uplift = availPts - totalCapPerMonth*horizon;
+    html+=`<div class="alert alert-ok" style="margin-bottom:12px">📈 Velocity growth adds <strong>+${Math.round(uplift)} pts</strong> capacity over ${horizon} months.</div>`;
+  }
+
+  if(balanceEnabled && Object.keys(plFracs).length>0){
+    // Pipeline balance summary table
+    html+=`<div class="sec">Pipeline Capacity Allocation</div>`;
+    html+=`<table><thead><tr><th>Pipeline</th><th>Effort share</th><th>Monthly quota (mo 1)</th><th>Total quota (${horizon}mo)</th><th>Projected spend</th><th>Balance</th></tr></thead><tbody>`;
+    for(const [pl,frac] of Object.entries(plFracs).sort((a,b)=>b[1]-a[1])){
+      const col=pipelineColor(pl);
+      const monthlyQuota=frac*totalCapByMonth[0];
+      const totalQuota=frac*availPts;
+      const spend=(pipelineMonthSpend[pl]||[]).slice(0,horizon).reduce((s,v)=>s+v,0);
+      const delta=spend-totalQuota;
+      const balColor=Math.abs(delta)<totalQuota*0.05?'var(--success)':delta<0?'var(--warn)':'var(--danger)';
+      const balStr=Math.abs(delta)<totalQuota*0.05?'✓ On target':delta<0?`↓ ${Math.abs(delta).toFixed(0)}pts under`:`↑ ${delta.toFixed(0)}pts over`;
+      html+=`<tr>
+        <td style="color:${col};font-family:var(--display);font-weight:600">${pl}</td>
+        <td style="font-family:var(--mono)">${Math.round(frac*100)}%</td>
+        <td style="font-family:var(--mono)">${monthlyQuota.toFixed(1)} pts</td>
+        <td style="font-family:var(--mono)">${totalQuota.toFixed(0)} pts</td>
+        <td style="font-family:var(--mono)">${spend.toFixed(0)} pts</td>
+        <td style="font-family:var(--mono);color:${balColor}">${balStr}</td>
+      </tr>`;
+    }
+    html+=`</tbody></table><div style="font-size:11px;color:var(--muted);margin-top:7px">Quotas are soft: unused capacity in a month may be consumed by other pipelines.</div>`;
+  }
+
+  if(noMemberProjects.length){
+    html+=`<div class="alert alert-warn" style="margin-top:12px">⚠ Projects with missing role members: ${noMemberProjects.map(p=>`${p.name} (needs: ${scheduled[p.id].noMembers.join(', ')})`).join('; ')}</div>`;
+  }
+
+  // Team capacity table (shows cap if any member has one)
+  const anyMemberCapped = teamMembers.some(m=>m.maxCap!=null&&m.maxCap>0);
+  const summaryMembers = teamMembers.filter(memberMatchesFilter);
+  if(summaryMembers.length>0){
+    html+=`<div class="sec">Team Capacity</div>
+    <table><thead><tr><th>Member</th><th>Role</th><th>Base vel</th>${anyMemberCapped?'<th>Max cap</th>':''}${rate>0?`<th>Month 1</th><th>Month ${Math.min(6,horizon)}</th><th>Month ${horizon}</th>`:''}
+    </tr></thead><tbody>`;
+    for(const mem of summaryMembers){
+      const v1=effectiveVelocity(mem,0), v6=effectiveVelocity(mem,Math.min(5,horizon-1)), vN=effectiveVelocity(mem,horizon-1);
+      const isCapped=mem.maxCap!=null&&mem.maxCap>0;
+      const capHit=isCapped&&vN>=mem.maxCap;
+      html+=`<tr>
+        <td><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${mem.color};display:inline-block"></span>${mem.name}</span></td>
+        <td style="font-family:var(--mono);color:var(--muted)">${mem.role}</td>
+        <td style="font-family:var(--mono)">${mem.velocity}</td>
+        ${anyMemberCapped?`<td style="font-family:var(--mono);color:${isCapped?'var(--warn)':'var(--muted)'}">${isCapped?mem.maxCap+'pts':'—'}</td>`:''}
+        ${rate>0?`<td style="font-family:var(--mono)">${v1.toFixed(1)}</td><td style="font-family:var(--mono)">${v6.toFixed(1)}</td><td style="font-family:var(--mono);color:${capHit?'var(--warn)':'var(--text)'}">${vN.toFixed(1)}${capHit?' ⌇':''}</td>`:''}
+      </tr>`;
+    }
+    html+=`</tbody></table>`;
+    if(anyMemberCapped) html+=`<div style="font-size:11px;color:var(--muted);margin-top:5px">⌇ Growth capped — member has reached their max capacity ceiling.</div>`;
+  }
+
+  html+=`<div class="sec">Project Schedule</div>
+  <table><thead><tr>
+    <th>Project</th><th>Pipeline</th><th>Roles</th><th>Pts</th><th>Start</th><th>End</th><th>Duration</th><th>Assigned to</th><th>Status</th>
+  </tr></thead><tbody>`;
+
+  const sortedP=[...projects].filter(projectMatchesFilter).sort((a,b)=>{
+    const pa=a.pipeline||'zzz',pb=b.pipeline||'zzz';
+    return pa!==pb?pa.localeCompare(pb):a.priority-b.priority||a.id-b.id;
+  });
+  let lastPl=null;
+  for(const p of sortedP){
+    const s=scheduled[p.id];
+    if(!s) continue;
+    const segs=s.months;
+    const first=segs.length?segs[0].month:null;
+    const last=segs.length?segs[segs.length-1].month:null;
+    const dur=first!==null?(last-first+1):0;
+    const pl=p.pipeline||'(No pipeline)';
+    if(pl!==lastPl){
+      html+=`<tr><td colspan="9" style="padding:9px 7px 3px;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">${pl}${balanceEnabled&&plFracs[pl]!==undefined?` · ${Math.round(plFracs[pl]*100)}% cap quota`:''}</td></tr>`;
+      lastPl=pl;
+    }
+    const assignedIds=new Set();
+    Object.values(s.alloc||{}).forEach(mo=>Object.keys(mo).forEach(id=>assignedIds.add(id)));
+    const names=teamMembers.filter(m=>assignedIds.has(m.id)).map(m=>`<span style="color:${m.color}">${m.name}</span>`).join(', ');
+    const roleStr=(p.roles||[]).map(r=>`${r.role} ${r.pct}%`).join(', ');
+    const statusColor=s.overflow?'var(--warn)':'var(--success)';
+    const status=s.overflow?`⚠ ${s.overflow}pts unmet`:'✓ Scheduled';
+
+    html+=`<tr>
+      <td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${p.color};display:inline-block"></span>${p.name}</span></td>
+      <td style="font-family:var(--mono);color:var(--muted)">${p.pipeline||'—'}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">${roleStr||'—'}</td>
+      <td style="font-family:var(--mono)">${p.points}</td>
+      <td style="font-family:var(--mono)">${first!==null?getMonthLabel(first):'—'}</td>
+      <td style="font-family:var(--mono)">${last!==null?getMonthLabel(last):'—'}</td>
+      <td style="font-family:var(--mono)">${dur?dur+'mo':'—'}</td>
+      <td style="font-size:11px">${names||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:${statusColor}">${status}</td>
+    </tr>`;
+  }
+  html+=`</tbody></table>`;
+  document.getElementById('summaryContent').innerHTML=html;
+}
+
+// ─── Role rows in add-project form ────────────────────────────────────────────
+function addRoleRow(){
+  const container=document.getElementById('roleRows');
+  const row=document.createElement('div');
+  row.className='role-row';
+  row.innerHTML=`
+    <select style="font-size:12px;padding:5px 7px">${roles().map(r=>`<option>${r}</option>`).join('')||'<option>Developer</option>'}</select>
+    <input type="number" value="100" min="1" max="100" placeholder="%" style="font-size:12px;padding:5px 7px">
+    <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" style="padding:3px 6px;font-size:14px;color:var(--danger)">✕</button>`;
+  container.appendChild(row);
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function addMember(){
+  const name=document.getElementById('tmName').value.trim();
+  const role=document.getElementById('tmRole').value.trim();
+  const errEl=document.getElementById('tmError');
+  if(!name&&!role){ errEl.textContent='Please enter a name and role.'; errEl.classList.add('show'); document.getElementById('tmName').focus(); return; }
+  if(!name){ errEl.textContent='Please enter a name.'; errEl.classList.add('show'); document.getElementById('tmName').focus(); return; }
+  if(!role){ errEl.textContent='Please enter a role.'; errEl.classList.add('show'); document.getElementById('tmRole').focus(); return; }
+  errEl.classList.remove('show');
+  const vel=parseInt(document.getElementById('tmVelocity').value)||10;
+  const maxCapRaw=document.getElementById('tmMaxCap').value.trim();
+  const maxCap=maxCapRaw!==''?parseInt(maxCapRaw):null;
+  const col=PALETTE[(teamMembers.length)%PALETTE.length];
+  teamMembers.push({id:'t'+(nextTmId++),name,role,velocity:vel,maxCap,color:col});
+  document.getElementById('tmName').value='';
+  document.getElementById('tmRole').value='';
+  document.getElementById('tmVelocity').value=10;
+  document.getElementById('tmMaxCap').value='';
+  render();
+}
+function deleteMember(id){ teamMembers=teamMembers.filter(m=>m.id!==id); render(); }
+
+function toggleEditMember(id){
+  const el=document.getElementById('edit-'+id);
+  if(!el) return;
+  el.classList.toggle('open');
+}
+
+function saveMember(id){
+  const m=teamMembers.find(x=>x.id===id);
+  if(!m) return;
+  const name=document.getElementById('edit-name-'+id).value.trim();
+  const role=document.getElementById('edit-role-'+id).value.trim();
+  const errEl=document.getElementById('edit-err-'+id);
+  if(!name||!role){
+    errEl.textContent=!name?'Name is required.':'Role is required.';
+    errEl.classList.add('show');
+    return;
+  }
+  errEl.classList.remove('show');
+  const vel=parseInt(document.getElementById('edit-vel-'+id).value)||m.velocity;
+  const capRaw=document.getElementById('edit-cap-'+id).value.trim();
+  const maxCap=capRaw!==''?parseInt(capRaw):null;
+  m.name=name; m.role=role; m.velocity=vel; m.maxCap=maxCap;
+  render();
+}
+
+function addProject(){
+  const name=document.getElementById('newName').value.trim();
+  if(!name){document.getElementById('newName').focus();return;}
+  const roleRowEls=document.querySelectorAll('#roleRows .role-row');
+  const rolesSplit=[];
+  let pctSum=0;
+  roleRowEls.forEach(row=>{
+    const role=row.querySelector('select').value;
+    const pct=parseInt(row.querySelector('input').value)||0;
+    if(role&&pct>0){rolesSplit.push({role,pct});pctSum+=pct;}
+  });
+  if(pctSum>0&&pctSum!==100) rolesSplit.forEach(r=>r.pct=Math.round(r.pct/pctSum*100));
+  const blocks=[...document.querySelectorAll('#depBlocksList input:checked')].map(el=>parseInt(el.value));
+  const totalPts=rolesSplit.length>0&&teamMembers.length>0
+    ?Math.round(rolesSplit.reduce((s,r)=>{const vel=membersByRole(r.role).reduce((a,m)=>a+m.velocity,0)||10;return s+(vel*r.pct/100);},0)*2):20;
+  projects.push({id:nextId++,name,pipeline:document.getElementById('newPipeline').value.trim()||'',
+    priority:parseInt(document.getElementById('newPriority').value)||1,
+    earliestStart:parseInt(document.getElementById('newEarliestStart').value)||0,
+    color:document.getElementById('newColor').value,blocks,roles:rolesSplit,points:totalPts});
+  document.getElementById('newName').value='';document.getElementById('newPipeline').value='';
+  document.getElementById('newPriority').value=1;document.getElementById('newEarliestStart').value=0;
+  document.getElementById('roleRows').innerHTML='';addRoleRow();render();
+}
+function deleteProject(id){
+  projects=projects.filter(p=>p.id!==id);
+  for(const p of projects) p.blocks=(p.blocks||[]).filter(bid=>bid!==id);
+  if(selectedId===id)selectedId=null;render();
+}
+function selectProject(id){selectedId=selectedId===id?null:id;render();}
+
+function toggleEditProject(id){
+  const el=document.getElementById('pedit-'+id);
+  if(el) el.classList.toggle('open');
+}
+
+function addEditRoleRow(pid){
+  const container=document.getElementById('pe-roles-'+pid);
+  if(!container) return;
+  const row=document.createElement('div');
+  row.className='role-row';
+  row.innerHTML=`
+    <select style="font-size:11px;padding:4px 6px">${roles().map(r=>`<option>${r}</option>`).join('')||'<option>Developer</option>'}</select>
+    <input type="number" value="0" min="1" max="100" placeholder="%" style="font-size:11px;padding:4px 6px">
+    <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" style="padding:2px 5px;font-size:13px;color:var(--danger)">✕</button>`;
+  container.appendChild(row);
+}
+
+function saveProject(id){
+  const p=projects.find(x=>x.id===id);
+  if(!p) return;
+  const errEl=document.getElementById('pe-err-'+id);
+  const name=document.getElementById('pe-name-'+id).value.trim();
+  if(!name){ errEl.textContent='Name is required.'; errEl.classList.add('show'); return; }
+  errEl.classList.remove('show');
+
+  // Collect role rows
+  const roleRows=document.querySelectorAll(`#pe-roles-${id} .role-row`);
+  const rolesSplit=[];
+  let pctSum=0;
+  roleRows.forEach(row=>{
+    const role=row.querySelector('select').value;
+    const pct=parseInt(row.querySelector('input').value)||0;
+    if(role&&pct>0){ rolesSplit.push({role,pct}); pctSum+=pct; }
+  });
+  if(pctSum>0&&pctSum!==100) rolesSplit.forEach(r=>r.pct=Math.round(r.pct/pctSum*100));
+
+  // Collect blocks
+  const blocks=[...document.querySelectorAll(`#pedit-${id} input[type=checkbox]:checked`)].map(el=>parseInt(el.value));
+
+  p.name=name;
+  p.pipeline=document.getElementById('pe-pipeline-'+id).value.trim();
+  p.priority=parseInt(document.getElementById('pe-priority-'+id).value)||1;
+  p.earliestStart=parseInt(document.getElementById('pe-start-'+id).value)||0;
+  p.color=document.getElementById('pe-color-'+id).value;
+  p.roles=rolesSplit;
+  p.blocks=blocks;
+
+  // Recalculate points from updated roles
+  if(rolesSplit.length>0&&teamMembers.length>0){
+    p.points=Math.round(rolesSplit.reduce((s,r)=>{
+      const vel=membersByRole(r.role).reduce((a,m)=>a+m.velocity,0)||10;
+      return s+(vel*r.pct/100);
+    },0)*2);
+  }
+
+  render();
+}
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  el.classList.add('active');document.getElementById('view-'+name).classList.add('active');
+}
+
+// ─── CSV ──────────────────────────────────────────────────────────────────────
+function handleCsvDrop(e){
+  e.preventDefault();document.getElementById('csvDropZone').style.borderColor='var(--border)';
+  const file=e.dataTransfer.files[0];if(file)parseCSV(file);
+}
+function handleCsvFile(input){const file=input.files[0];if(file)parseCSV(file);input.value='';}
+function parseCSV(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const errEl=document.getElementById('csvError');errEl.style.display='none';
+    try{
+      const lines=text.trim().split(/\r?\n/);
+      if(lines.length<2)throw new Error('CSV needs a header row and at least one project.');
+      const hdrs=lines[0].split(',').map(h=>h.trim().toLowerCase());
+      const idx=k=>hdrs.indexOf(k);
+      if(idx('name')<0)throw new Error('Missing required column: name');
+      const imported=[];const errors=[];
+      for(let i=1;i<lines.length;i++){
+        const line=lines[i].trim();if(!line)continue;
+        const cols=parseCSVLine(line);
+        const name=cols[idx('name')]?.trim();
+        if(!name){errors.push(`Row ${i+1}: missing name`);continue;}
+        let rolesSplit=[];
+        const rolesRaw=idx('roles')>=0?cols[idx('roles')]?.trim():'';
+        if(rolesRaw){rolesRaw.split(';').forEach(part=>{const[role,pct]=part.split(':');if(role&&pct)rolesSplit.push({role:role.trim(),pct:parseInt(pct)||0});});}
+        const pts=idx('points')>=0&&cols[idx('points')]?.trim()?parseInt(cols[idx('points')]):20;
+        imported.push({_name:name,pipeline:idx('pipeline')>=0?cols[idx('pipeline')]?.trim()||'':'',
+          points:pts,priority:idx('priority')>=0?(parseInt(cols[idx('priority')])||1):1,
+          earliestStart:idx('earliest_start')>=0?(parseInt(cols[idx('earliest_start')])||0):0,
+          color:idx('color')>=0&&cols[idx('color')]?.trim()?cols[idx('color')].trim():PALETTE[imported.length%PALETTE.length],
+          _blocksNames:idx('blocks')>=0?cols[idx('blocks')]?.split(';').map(s=>s.trim()).filter(Boolean):[],roles:rolesSplit});
+      }
+      if(imported.length===0)throw new Error('No valid projects. '+errors.join('; '));
+      const newP=imported.map((p,i)=>({...p,id:nextId+i}));nextId+=newP.length;
+      for(const p of newP){
+        p.blocks=(p._blocksNames||[]).map(bn=>{const f=newP.find(q=>q._name?.toLowerCase()===bn.toLowerCase());return f?f.id:null;}).filter(Boolean);
+        p.name=p._name;delete p._name;delete p._blocksNames;
+      }
+      projects=newP;selectedId=null;
+      if(errors.length){errEl.textContent=`Imported ${projects.length} projects. Skipped: ${errors.join('; ')}`;errEl.style.display='block';}
+      render();
+    }catch(err){errEl.textContent='⚠ '+err.message;errEl.style.display='block';}
+  };
+  reader.readAsText(file);
+}
+function parseCSVLine(line){
+  const cols=[];let cur='',inQ=false;
+  for(const ch of line){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){cols.push(cur);cur='';}else{cur+=ch;}}
+  cols.push(cur);return cols;
+}
+function downloadTemplate(){
+  const csv=['name,pipeline,points,priority,earliest_start,color,blocks,roles',
+    'Discovery & Research,Infrastructure,8,1,0,#5b7fff,,Developer:60;Designer:40',
+    'Platform Upgrade,Infrastructure,20,2,0,#a78bfa,,Developer:80;QA:20',
+    'Customer Portal,Customer Experience,15,3,2,#22c55e,Discovery & Research,Developer:60;Designer:40',
+    'Data Migration,Infrastructure,12,2,0,#f59e0b,Platform Upgrade,Developer:70;QA:30',
+    'Mobile App v2,Customer Experience,18,4,3,#ef4444,Customer Portal,Developer:50;Designer:30;QA:20'].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='programme-template.csv';a.click();
+}
+function clearProjects(){
+  if(projects.length===0||confirm('Remove all projects?')){projects=[];selectedId=null;nextId=1;render();}
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
