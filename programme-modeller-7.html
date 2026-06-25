@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Programme Modeller</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@400;500&display=swap');
+  :root {
+    --bg:#0f1117;--surface:#181c26;--surface2:#1f2433;--border:#2a3045;
+    --accent:#5b7fff;--accent2:#a78bfa;--warn:#f59e0b;--danger:#ef4444;
+    --success:#22c55e;--text:#e8eaf0;--muted:#6b7694;
+    --mono:'DM Mono',monospace;--display:'Syne',sans-serif;--body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:14px;min-height:100vh;}
+  header{padding:18px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--surface);}
+  header h1{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.5px;}
+  header .chip{font-family:var(--mono);font-size:10px;color:var(--accent);background:rgba(91,127,255,.12);padding:3px 8px;border-radius:4px;}
+  .layout{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 57px);}
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+  .sb{padding:14px 16px;border-bottom:1px solid var(--border);}
+  .sb h2{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .main{display:flex;flex-direction:column;overflow:hidden;}
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;}
+  .tab{font-family:var(--display);font-weight:600;font-size:13px;padding:13px 14px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;}
+  .tab:hover{color:var(--text);}.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .view{display:none;flex:1;overflow:auto;padding:22px;}.view.active{display:block;}
+  /* cards */
+  .card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:7px;cursor:pointer;transition:border-color .15s;position:relative;}
+  .card:hover{border-color:var(--accent);}.card.selected{border-color:var(--accent);background:rgba(91,127,255,.07);}
+  .card-hdr{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .card-name{font-family:var(--display);font-weight:700;font-size:12px;flex:1;}
+  .card-sub{font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .card-meta{display:flex;gap:6px;flex-wrap:wrap;}
+  .badge{font-family:var(--mono);font-size:10px;padding:2px 5px;border-radius:3px;background:var(--surface);color:var(--muted);border:1px solid var(--border);}
+  .badge.dep{color:var(--accent2);border-color:rgba(167,139,250,.3);}
+  .badge.role{color:var(--accent);border-color:rgba(91,127,255,.3);}
+  /* forms */
+  .fr{margin-bottom:9px;}
+  label{display:block;font-size:10px;font-weight:500;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.8px;}
+  input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--body);font-size:13px;padding:6px 9px;outline:none;transition:border-color .15s;}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+  select option{background:var(--bg);}
+  .btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:6px;font-family:var(--display);font-weight:600;font-size:12px;cursor:pointer;border:none;transition:all .15s;}
+  .btn-primary{background:var(--accent);color:#fff;}.btn-primary:hover{background:#4a6ef0;}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}.btn-ghost:hover{color:var(--text);border-color:var(--muted);}
+  .btn-sm{padding:3px 9px;font-size:11px;}
+  .btn-row{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;}
+  /* cap bar */
+  .cap-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin:4px 0;}
+  .cap-fill{height:100%;border-radius:3px;transition:width .3s;}
+  /* gantt */
+  .gantt-wrap{overflow-x:auto;}
+  .gantt-hdr{display:flex;border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:3px;}
+  .gantt-lbl{width:200px;flex-shrink:0;font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .gantt-months{display:flex;flex:1;}
+  .gantt-mo{flex:1;min-width:54px;font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;}
+  .gantt-row{display:flex;align-items:center;margin-bottom:5px;min-height:30px;}
+  .gantt-row-lbl{width:200px;flex-shrink:0;}
+  .gantt-row-lbl .pname{font-family:var(--display);font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gantt-row-lbl .psub{font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .gantt-tl{flex:1;position:relative;height:30px;}
+  .gantt-bar{position:absolute;height:20px;top:5px;border-radius:4px;display:flex;align-items:center;padding:0 7px;font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.9);font-weight:500;white-space:nowrap;overflow:hidden;}
+  .gcol{position:absolute;top:0;bottom:0;border-left:1px solid var(--border);opacity:.4;}
+  /* alerts */
+  .alert{padding:9px 11px;border-radius:6px;margin-bottom:7px;font-size:12px;}
+  .alert-warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--warn);}
+  .alert-ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--success);}
+  /* summary */
+  .sum-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px;}
+  .sum-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+  .sum-card .val{font-family:var(--display);font-weight:800;font-size:26px;}
+  .sum-card .lbl{font-size:10px;color:var(--muted);margin-top:2px;}
+  .sec{font-family:var(--display);font-weight:700;font-size:14px;margin:18px 0 10px;}
+  /* resource view */
+  .month-row{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:8px;}
+  .month-lbl{font-family:var(--display);font-weight:700;font-size:13px;margin-bottom:7px;}
+  /* team cards */
+  .team-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;position:relative;}
+  .team-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:13px;flex-shrink:0;}
+  .team-info{flex:1;min-width:0;}
+  .team-name{font-family:var(--display);font-weight:700;font-size:12px;}
+  .team-meta{font-family:var(--mono);font-size:10px;color:var(--muted);}
+  /* role rows in project form */
+  .role-row{display:grid;grid-template-columns:1fr 70px 28px;gap:5px;margin-bottom:5px;align-items:center;}
+  /* scrollbar */
+  ::-webkit-scrollbar{width:5px;height:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+  .del-btn{position:absolute;top:7px;right:7px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 5px;border-radius:4px;opacity:0;transition:opacity .15s;}
+  .card:hover .del-btn,.team-card:hover .del-btn{opacity:1;}
+  .del-btn:hover{color:var(--danger);background:rgba(239,68,68,.1);}
+  .card:hover .card-actions,.team-card:hover .card-actions{opacity:1 !important;}
+  .msl{max-height:110px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px;}
+  .msl-item{display:flex;align-items:center;gap:7px;padding:3px 5px;border-radius:4px;cursor:pointer;font-size:12px;}
+  .msl-item:hover{background:var(--surface2);}
+  .msl-item input[type=checkbox]{accent-color:var(--accent);}
+  .empty{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+  .empty strong{display:block;font-family:var(--display);font-size:15px;color:var(--text);margin-bottom:5px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{text-align:left;padding:5px 7px;font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);}
+  td{padding:7px;border-bottom:1px solid var(--border);}
+  /* modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:420px;max-width:95vw;max-height:90vh;overflow-y:auto;position:relative;}
+  .modal h3{font-family:var(--display);font-weight:800;font-size:16px;margin-bottom:18px;}
+  .modal-close{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:4px;}
+  .modal-close:hover{color:var(--text);background:var(--surface2);}
+</style>
+</head>
+<body>
+<header>
+  <h1>Programme Modeller</h1>
+  <span class="chip">BETA</span>
+  <div style="flex:1"></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn btn-ghost btn-sm" onclick="saveJSON()" title="Save full model as JSON">💾 Save</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('jsonLoadInput').click()" title="Load model from JSON">📂 Load</button>
+    <input type="file" id="jsonLoadInput" accept=".json" style="display:none" onchange="loadJSON(this)">
+    <div style="width:1px;height:20px;background:var(--border)"></div>
+    <button class="btn btn-ghost btn-sm" onclick="exportScheduleCSV()" title="Export schedule to CSV">⬇ CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportScheduleXLSX()" title="Export schedule to Excel">⬇ Excel</button>
+    <div style="width:1px;height:20px;background:var(--border)"></div>
+    <button class="btn btn-ghost btn-sm" onclick="captureScenario()" title="Snapshot current plan as a scenario">📸 Snapshot</button>
+  </div>
+</header>
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Settings -->
+    <div class="sb">
+      <h2>Settings</h2>
+      <div class="fr"><label>Planning horizon (months)</label><input type="number" id="horizonMonths" value="12" min="3" max="36" oninput="render()"></div>
+      <div class="fr"><label>Start month</label><input type="month" id="startMonth" oninput="render()"></div>
+    </div>
+
+    <!-- CSV Import -->
+    <div class="sb">
+      <h2>Import CSV</h2>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
+        Projects CSV columns:<br>
+        <span style="font-family:var(--mono);color:var(--accent2);font-size:10px">name, pipeline, priority, earliest_start, color, blocks, roles</span><br>
+        <span style="font-family:var(--mono);color:var(--muted);font-size:10px">roles format: <em>Dev:60;Design:40</em></span>
+      </div>
+      <div id="csvDropZone" onclick="document.getElementById('csvFileInput').click()"
+        style="border:1.5px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;"
+        ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+        ondragleave="this.style.borderColor='var(--border)'"
+        ondrop="handleCsvDrop(event)">
+        <div style="font-size:18px;margin-bottom:3px">📂</div>
+        <div style="font-size:11px;color:var(--muted)">Drop CSV or click to browse</div>
+      </div>
+      <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="handleCsvFile(this)">
+      <div id="csvError" style="display:none;margin-top:7px" class="alert alert-warn"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">↓ Template</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearProjects()">✕ Clear projects</button>
+      </div>
+    </div>
+
+    <!-- Team -->
+    <div class="sb">
+      <h2>Team (<span id="teamCount">0</span>)</h2>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
+        Import CSV with columns:<br>
+        <span style="font-family:var(--mono);color:var(--accent2);font-size:10px">name, role, velocity, color</span>
+      </div>
+      <div id="teamCsvDropZone" onclick="document.getElementById('teamCsvInput').click()"
+        style="border:1.5px dashed var(--border);border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:border-color .15s;margin-bottom:8px"
+        ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+        ondragleave="this.style.borderColor='var(--border)'"
+        ondrop="handleTeamCsvDrop(event)">
+        <div style="font-size:16px;margin-bottom:2px">👥</div>
+        <div style="font-size:11px;color:var(--muted)">Drop team CSV or click to browse</div>
+      </div>
+      <input type="file" id="teamCsvInput" accept=".csv" style="display:none" onchange="handleTeamCsvFile(this)">
+      <div id="teamCsvError" style="display:none;margin-bottom:8px" class="alert alert-warn"></div>
+      <div class="btn-row" style="margin-top:0;margin-bottom:10px">
+        <button class="btn btn-ghost btn-sm" onclick="downloadTeamTemplate()">↓ Team template</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearTeam()">✕ Clear team</button>
+      </div>
+      <div class="fr"><label>Name</label><input type="text" id="tmName" placeholder="e.g. Alice"></div>
+      <div class="fr"><label>Role</label><input type="text" id="tmRole" placeholder="e.g. Developer" list="roleList"><datalist id="roleList"></datalist></div>
+      <div class="fr"><label>Velocity (pts/month)</label><input type="number" id="tmVelocity" value="10" min="1" max="999"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="fr"><label>Growth rate (%/mo)</label><input type="number" id="tmGrowthRate" value="0" min="0" step="0.1" placeholder="0"></div>
+        <div class="fr"><label>Velocity cap</label><input type="number" id="tmVelocityCap" min="1" placeholder="None"></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="addMember()">+ Add Member</button></div>
+      <div id="teamList" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Commitments -->
+    <div class="sb">
+      <h2>Commitments (<span id="commitCount">0</span>)</h2>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
+        Fixed pre-scheduled work that reduces team capacity before projects are scheduled.<br>
+        CSV columns: <span style="font-family:var(--mono);color:var(--accent2);font-size:10px">name, start_month, end_month, color, allocations</span><br>
+        <span style="font-family:var(--mono);color:var(--muted);font-size:10px">allocations: <em>Alice:2;Bob:3</em></span>
+      </div>
+      <div id="cmCsvDropZone" onclick="document.getElementById('cmCsvInput').click()"
+        style="border:1.5px dashed var(--border);border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:border-color .15s;margin-bottom:8px"
+        ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+        ondragleave="this.style.borderColor='var(--border)'"
+        ondrop="handleCmCsvDrop(event)">
+        <div style="font-size:16px;margin-bottom:2px">📌</div>
+        <div style="font-size:11px;color:var(--muted)">Drop commitments CSV or click to browse</div>
+      </div>
+      <input type="file" id="cmCsvInput" accept=".csv" style="display:none" onchange="handleCmCsvFile(this)">
+      <div id="cmCsvError" style="display:none;margin-bottom:8px" class="alert alert-warn"></div>
+      <div class="btn-row" style="margin-top:0;margin-bottom:10px">
+        <button class="btn btn-ghost btn-sm" onclick="downloadCommitmentsTemplate()">↓ Template</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearCommitments()">✕ Clear</button>
+      </div>
+      <div class="fr"><label>Name</label><input type="text" id="cm-name" placeholder="e.g. Support Rota"></div>
+      <div class="fr"><label>Colour</label><input type="color" id="cm-color" value="#334155" style="height:32px;padding:2px 5px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="fr"><label>Start (month offset)</label><input type="number" id="cm-start" value="0" min="0"></div>
+        <div class="fr"><label>End (month offset)</label><input type="number" id="cm-end" value="11" min="0"></div>
+      </div>
+      <div class="fr">
+        <label>Member allocations (pts/month)</label>
+        <div id="cm-allocRows"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:5px" onclick="addCmAllocRow()">+ Add member</button>
+      </div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="addCommitment()">+ Add Commitment</button></div>
+      <div id="commitmentList" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Add Project -->
+    <div class="sb">
+      <h2>Add Project</h2>
+      <div class="fr"><label>Name</label><input type="text" id="newName" placeholder="e.g. Platform Upgrade"></div>
+      <div class="fr"><label>Pipeline</label><input type="text" id="newPipeline" placeholder="e.g. Infrastructure" list="pipelineList"><datalist id="pipelineList"></datalist></div>
+      <div class="fr"><label>Priority (1=highest)</label><input type="number" id="newPriority" value="1" min="1"></div>
+      <div class="fr"><label>Earliest start (month offset)</label><input type="number" id="newEarliestStart" value="0" min="0"></div>
+      <div class="fr"><label>Colour</label><input type="color" id="newColor" value="#5b7fff" style="height:32px;padding:2px 5px;"></div>
+      <div class="fr">
+        <label>Role effort split <span style="font-weight:400;text-transform:none;letter-spacing:0">(role → % of total)</span></label>
+        <div id="roleRows"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:5px" onclick="addRoleRow()">+ Add role</button>
+      </div>
+      <div class="fr"><label>Blocks (must finish before)</label><div class="msl" id="depBlocksList"></div></div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="addProject()">+ Add Project</button></div>
+    </div>
+
+    <!-- Project list -->
+    <div class="sb" style="flex:1">
+      <h2>Projects (<span id="projectCount">0</span>)</h2>
+      <div class="fr" style="margin-bottom:7px">
+        <select id="pipelineFilter" onchange="render()" style="font-size:12px;padding:4px 7px">
+          <option value="">All pipelines</option>
+        </select>
+      </div>
+      <div id="projectList"></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('gantt',this)">Gantt</button>
+      <button class="tab" onclick="switchTab('team',this)">Team</button>
+      <button class="tab" onclick="switchTab('summary',this)">Summary</button>
+      <button class="tab" onclick="switchTab('scenario',this)">Scenarios</button>
+    </div>
+    <div id="view-gantt" class="view active"><div id="ganttContent"></div></div>
+    <div id="view-team" class="view"><div id="teamContent"></div></div>
+    <div id="view-summary" class="view"><div id="summaryContent"></div></div>
+    <div id="view-scenario" class="view"><div id="scenarioContent"></div></div>
+  </div>
+</div>
+
+<!-- Edit Member Modal -->
+<div id="editMemberModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEditMember()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditMember()">✕</button>
+    <h3>Edit Team Member</h3>
+    <div class="fr"><label>Name</label><input type="text" id="em-name"></div>
+    <div class="fr"><label>Role</label><input type="text" id="em-role" list="em-roleList"><datalist id="em-roleList"></datalist></div>
+    <div class="fr"><label>Velocity (pts/month)</label><input type="number" id="em-velocity" min="1" max="999"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="fr"><label>Growth rate (%/mo)</label><input type="number" id="em-growthRate" min="0" step="0.1" placeholder="0"></div>
+      <div class="fr"><label>Velocity cap</label><input type="number" id="em-velocityCap" min="1" placeholder="None"></div>
+    </div>
+    <div class="fr"><label>Colour</label><input type="color" id="em-color" style="height:34px;padding:2px 5px;"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveEditMember()">Save changes</button>
+      <button class="btn btn-ghost" onclick="closeEditMember()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Project Modal -->
+<div id="editProjectModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEditProject()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditProject()">✕</button>
+    <h3>Edit Project</h3>
+    <div class="fr"><label>Name</label><input type="text" id="ep-name"></div>
+    <div class="fr"><label>Pipeline</label><input type="text" id="ep-pipeline" list="ep-pipelineList"><datalist id="ep-pipelineList"></datalist></div>
+    <div class="fr"><label>Priority (1=highest)</label><input type="number" id="ep-priority" min="1"></div>
+    <div class="fr"><label>Total effort (points)</label><input type="number" id="ep-points" min="1"></div>
+    <div class="fr"><label>Earliest start (month offset)</label><input type="number" id="ep-earliestStart" min="0"></div>
+    <div class="fr"><label>Colour</label><input type="color" id="ep-color" style="height:34px;padding:2px 5px;"></div>
+    <div class="fr">
+      <label>Role effort split <span style="font-weight:400;text-transform:none;letter-spacing:0">(role → % of total)</span></label>
+      <div id="ep-roleRows"></div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:5px" onclick="addEditRoleRow()">+ Add role</button>
+    </div>
+    <div class="fr"><label>Blocks (must finish before starting these)</label><div class="msl" id="ep-blocksList"></div></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveEditProject()">Save changes</button>
+      <button class="btn btn-ghost" onclick="closeEditProject()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Commitment Modal -->
+<div id="editCommitModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEditCommit()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditCommit()">✕</button>
+    <h3>Edit Commitment</h3>
+    <div class="fr"><label>Name</label><input type="text" id="ec-name"></div>
+    <div class="fr"><label>Colour</label><input type="color" id="ec-color" style="height:34px;padding:2px 5px;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="fr"><label>Start (month offset)</label><input type="number" id="ec-start" min="0"></div>
+      <div class="fr"><label>End (month offset)</label><input type="number" id="ec-end" min="0"></div>
+    </div>
+    <div class="fr">
+      <label>Member allocations (pts/month)</label>
+      <div id="ec-allocRows"></div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:5px" onclick="addEcAllocRow()">+ Add member</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveEditCommit()">Save changes</button>
+      <button class="btn btn-ghost" onclick="closeEditCommit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const PALETTE = ['#5b7fff','#a78bfa','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#f97316','#84cc16','#8b5cf6'];
+
+let teamMembers = [
+  { id:'t1', name:'Alice',   role:'Developer', velocity:12, color:'#5b7fff', growthRate:1.67, velocityCap:null },
+  { id:'t2', name:'Bob',     role:'Developer', velocity:10, color:'#a78bfa', growthRate:2,    velocityCap:50   },
+  { id:'t3', name:'Carla',   role:'Designer',  velocity:8,  color:'#22c55e', growthRate:0,    velocityCap:null },
+  { id:'t4', name:'David',   role:'QA',        velocity:9,  color:'#f59e0b', growthRate:0,    velocityCap:null },
+  { id:'t5', name:'Emma',    role:'Developer', velocity:11, color:'#ef4444', growthRate:0,    velocityCap:null },
+];
+
+// roles: [{role:'Developer', pct:70},{role:'Designer', pct:30}]  — pct sums to 100
+let projects = [
+  { id:1, name:'Discovery & Research', pipeline:'Infrastructure',     priority:1, earliestStart:0, color:'#5b7fff', blocks:[], roles:[{role:'Developer',pct:60},{role:'Designer',pct:40}] },
+  { id:2, name:'Platform Upgrade',     pipeline:'Infrastructure',     priority:2, earliestStart:0, color:'#a78bfa', blocks:[], roles:[{role:'Developer',pct:80},{role:'QA',pct:20}] },
+  { id:3, name:'Customer Portal',      pipeline:'Customer Experience',priority:3, earliestStart:2, color:'#22c55e', blocks:[1], roles:[{role:'Developer',pct:60},{role:'Designer',pct:40}] },
+  { id:4, name:'Data Migration',       pipeline:'Infrastructure',     priority:2, earliestStart:0, color:'#f59e0b', blocks:[2], roles:[{role:'Developer',pct:70},{role:'QA',pct:30}] },
+  { id:5, name:'Mobile App v2',        pipeline:'Customer Experience',priority:4, earliestStart:3, color:'#ef4444', blocks:[3], roles:[{role:'Developer',pct:50},{role:'Designer',pct:30},{role:'QA',pct:20}] },
+];
+let nextId = 6;
+let nextTmId = 6;
+let nextCmId = 1;
+let selectedId = null;
+
+// commitments: fixed pre-scheduled work consuming named member capacity
+// { id, name, color, startMonth (offset), endMonth (offset), allocations: [{memberId, ptsPerMonth}] }
+let commitments = [
+  { id:'c1', name:'Support Rota', color:'#334155', startMonth:0, endMonth:11,
+    allocations:[{memberId:'t1',ptsPerMonth:2},{memberId:'t2',ptsPerMonth:2}] },
+  { id:'c2', name:'Legacy Maintenance', color:'#1e3a5f', startMonth:0, endMonth:5,
+    allocations:[{memberId:'t5',ptsPerMonth:3}] },
+];
+
+// scenarios: snapshots for comparison
+let scenarios = [];
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.getElementById('startMonth').value = (()=>{
+  const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+})();
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getMonthLabel(offset){
+  const base=document.getElementById('startMonth').value||`${new Date().getFullYear()}-01`;
+  const [y,m]=base.split('-').map(Number);
+  const d=new Date(y,m-1+offset,1);
+  return d.toLocaleString('default',{month:'short',year:'2-digit'});
+}
+function roles(){return [...new Set(teamMembers.map(m=>m.role))].sort();}
+function membersByRole(role){return teamMembers.filter(m=>m.role===role);}
+function roleVelocity(role){return membersByRole(role).reduce((s,m)=>s+m.velocity,0);}
+
+// ─── Scheduling engine ────────────────────────────────────────────────────────
+// Each project has roles with % split. Total points = sum of member velocities * months.
+// We compute per-role demand per project and schedule across per-member capacity.
+// Members can be split across projects in a month proportionally.
+
+function scheduleWithDeps(){
+  const horizon=parseInt(document.getElementById('horizonMonths').value)||12;
+
+  // Per-member remaining capacity each month: memberCap[memberId][month] = pts available
+  // Applies compound monthly growth rate and optional cap
+  const memberCap = {};
+  const memberEffectiveVelocity = {}; // [memberId][month] — used in views
+  for(const m of teamMembers){
+    const rate = (m.growthRate||0) / 100;
+    const cap = m.velocityCap || Infinity;
+    memberCap[m.id] = [];
+    memberEffectiveVelocity[m.id] = [];
+    for(let mo=0; mo<horizon+12; mo++){
+      const v = Math.min(cap, m.velocity * Math.pow(1 + rate, mo));
+      memberCap[m.id][mo] = v;
+      memberEffectiveVelocity[m.id][mo] = v;
+    }
+  }
+
+  // Total capacity per month (sum of all member velocities at month 0)
+  const totalCapPerMonth = teamMembers.reduce((s,m)=>s+m.velocity,0);
+
+  // ── Deduct commitments first ──────────────────────────────────────────────
+  for(const c of commitments){
+    const start=Math.max(0, c.startMonth||0);
+    const end=Math.min(horizon+11, c.endMonth??horizon-1);
+    for(const alloc of (c.allocations||[])){
+      if(!memberCap[alloc.memberId]) continue;
+      for(let m=start;m<=end;m++){
+        memberCap[alloc.memberId][m]=Math.max(0, memberCap[alloc.memberId][m]-(alloc.ptsPerMonth||0));
+      }
+    }
+  }
+
+  // Sort projects by priority, then id
+  const sorted=[...projects].sort((a,b)=>a.priority-b.priority||a.id-b.id);
+
+  const finishMonth={};
+  const result={};
+  const scheduled=new Set();
+  const queue=[...sorted];
+  let iters=0;
+
+  while(queue.length>0&&iters<2000){
+    iters++;
+    const p=queue.shift();
+
+    // Check all blockers scheduled
+    const blockers=projects.filter(q=>q.blocks&&q.blocks.includes(p.id));
+    if(!blockers.every(q=>scheduled.has(q.id))){ queue.push(p); continue; }
+
+    let earliest=p.earliestStart||0;
+    for(const bl of blockers){
+      if(finishMonth[bl.id]!==undefined) earliest=Math.max(earliest,finishMonth[bl.id]+1);
+    }
+
+    // Compute role demands: role → total pts needed
+    const roleDemand={};
+    // We derive total project points from team capacity:
+    // total project effort = sum over roles of (pct/100 * totalCapPerMonth * estimated months)
+    // We use a simpler model: each role has a % of total project effort.
+    // Total project effort is the sum of all role-member velocities available.
+    // Actually: project has no fixed "total points" anymore — it's driven by role splits & member caps.
+    // We store a per-project "total points" equivalent (sum of role pts needed).
+    // For the sample data we derive it from the old points field; for new projects same.
+    // Each role's required pts = project.totalPts * (pct/100)
+    const totalPts = p.points || 20;
+    const pRoles = p.roles && p.roles.length ? p.roles : [{role:'Any',pct:100}];
+
+    // role → pts remaining for this project
+    const roleRemaining={};
+    for(const r of pRoles) roleRemaining[r.role]=(totalPts*r.pct/100);
+
+    // month-level allocation: { month → { memberId → pts } }
+    const alloc={};
+    result[p.id]={id:p.id,months:[],alloc:{},earliest,roleDemand:{}};
+
+    // Determine if any role has no available members
+    const noMembers=pRoles.filter(r=>r.role!=='Any'&&membersByRole(r.role).length===0);
+
+    let projectDone=false;
+    for(let m=earliest;m<horizon+12&&!projectDone;m++){
+      // Check all roles still have remaining work
+      const stillNeeded=pRoles.filter(r=>roleRemaining[r.role]>0.01);
+      if(stillNeeded.length===0){projectDone=true;break;}
+
+      let anyWorkDone=false;
+      for(const r of stillNeeded){
+        const needed=roleRemaining[r.role];
+        const members=r.role==='Any'?teamMembers:membersByRole(r.role);
+        if(members.length===0) continue;
+        let roleGot=0;
+        for(const mem of members){
+          if(memberCap[mem.id][m]<=0) continue;
+          const use=Math.min(memberCap[mem.id][m], needed-roleGot);
+          if(use<=0.001) continue;
+          memberCap[mem.id][m]-=use;
+          roleGot+=use;
+          if(!alloc[m]) alloc[m]={};
+          alloc[m][mem.id]=(alloc[m][mem.id]||0)+use;
+          anyWorkDone=true;
+        }
+        roleRemaining[r.role]-=roleGot;
+        if(roleRemaining[r.role]<0) roleRemaining[r.role]=0;
+      }
+
+      if(anyWorkDone){
+        const totalGot=Object.values(alloc[m]||{}).reduce((s,v)=>s+v,0);
+        result[p.id].months.push({month:m,pts:Math.round(totalGot*10)/10});
+        finishMonth[p.id]=m;
+        result[p.id].alloc[m]=alloc[m]||{};
+      }
+    }
+
+    // Overflow: any role remaining?
+    const overflowPts=Object.values(roleRemaining).reduce((s,v)=>s+v,0);
+    if(overflowPts>0.5){
+      result[p.id].overflow=Math.round(overflowPts);
+      result[p.id].overflowByRole=roleRemaining;
+    }
+    result[p.id].noMembers=noMembers.map(r=>r.role);
+
+    scheduled.add(p.id);
+  }
+
+  // Compute per-member monthly usage for views
+  const memberMonthlyUsed={};
+  for(const mem of teamMembers){
+    memberMonthlyUsed[mem.id]=Array(horizon).fill(0);
+    for(let m=0;m<horizon;m++){
+      memberMonthlyUsed[mem.id][m]=mem.velocity-(memberCap[mem.id][m]||0);
+    }
+  }
+
+  // Aggregate monthly total used
+  const monthUsed=Array(horizon).fill(0);
+  for(const mem of teamMembers){
+    for(let m=0;m<horizon;m++) monthUsed[m]+=memberMonthlyUsed[mem.id][m];
+  }
+
+  return{scheduled:result,monthUsed,memberMonthlyUsed,memberEffectiveVelocity,finishMonth,horizon,totalCapPerMonth};
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render(){
+  renderSidebar();
+  renderGantt();
+  renderTeam();
+  renderSummary();
+  renderScenarios();
+}
+
+function renderSidebar(){
+  document.getElementById('teamCount').textContent=teamMembers.length;
+  document.getElementById('projectCount').textContent=projects.length;
+
+  // Role datalist
+  document.getElementById('roleList').innerHTML=roles().map(r=>`<option value="${r}">`).join('');
+
+  // Pipeline datalist + filter
+  const pipelines=[...new Set(projects.map(p=>p.pipeline).filter(Boolean))].sort();
+  document.getElementById('pipelineList').innerHTML=pipelines.map(pl=>`<option value="${pl}">`).join('');
+  const filterEl=document.getElementById('pipelineFilter');
+  const cur=filterEl.value;
+  filterEl.innerHTML='<option value="">All pipelines</option>'+pipelines.map(pl=>`<option value="${pl}"${cur===pl?' selected':''}>${pl}</option>`).join('');
+
+  // Dep blocks selector
+  document.getElementById('depBlocksList').innerHTML=projects.map(p=>`
+    <label class="msl-item"><input type="checkbox" value="${p.id}">
+    <span style="color:${p.color}">${p.name}</span></label>`).join('');
+
+  // Role rows in add-project form — refresh datalist only, keep existing rows
+  document.querySelectorAll('.role-row select').forEach(sel=>{
+    const cur=sel.value;
+    sel.innerHTML=roles().map(r=>`<option${r===cur?' selected':''}>${r}</option>`).join('');
+  });
+  if(document.getElementById('roleRows').children.length===0) addRoleRow();
+
+  document.getElementById('commitCount').textContent=commitments.length;
+
+  // Populate commitment alloc member selects
+  const memberOpts=teamMembers.map(m=>`<option value="${m.id}">${m.name} (${m.role})</option>`).join('');
+  document.querySelectorAll('.cm-alloc-member').forEach(sel=>{const v=sel.value;sel.innerHTML=memberOpts;sel.value=v;});
+
+  // Commitment list
+  const cl=document.getElementById('commitmentList');
+  cl.innerHTML=commitments.length===0?'<div class="empty" style="padding:14px;font-size:11px">No commitments yet.</div>':
+    commitments.map(c=>{
+      const totalPts=c.allocations.reduce((s,a)=>s+a.ptsPerMonth,0);
+      const members=c.allocations.map(a=>{const m=teamMembers.find(t=>t.id===a.memberId);return m?`${m.name} ${a.ptsPerMonth}pts`:'?';}).join(', ');
+      return `<div class="card" style="border-left:3px solid ${c.color}">
+        <div style="position:absolute;top:7px;right:7px;display:flex;gap:4px;opacity:0;transition:opacity .15s" class="card-actions">
+          <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="openEditCommit('${c.id}')">✎</button>
+          <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px;color:var(--danger)" onclick="deleteCommitment('${c.id}')">✕</button>
+        </div>
+        <div class="card-hdr"><div class="dot" style="background:${c.color}"></div>
+          <div class="card-name">${c.name}</div>
+          <div class="card-sub">${totalPts}pts/mo</div></div>
+        <div class="card-meta">
+          <span class="badge">M${c.startMonth+1}–M${c.endMonth+1}</span>
+          <span class="badge" style="color:var(--accent2)">${members||'no members'}</span>
+        </div></div>`;
+    }).join('');
+
+  // Init commitment alloc rows if empty
+  if(document.getElementById('cm-allocRows').children.length===0) addCmAllocRow();
+
+  // Team list
+  const tl=document.getElementById('teamList');
+  if(teamMembers.length===0){tl.innerHTML='<div class="empty" style="padding:16px"><strong>No team yet</strong>Add members above.</div>';return;}
+  tl.innerHTML=teamMembers.map(m=>`
+    <div class="team-card">
+      <div class="team-avatar" style="background:${m.color}22;color:${m.color}">${m.name[0]}</div>
+      <div class="team-info">
+        <div class="team-name">${m.name}</div>
+        <div class="team-meta">${m.role} · ${m.velocity}pts/mo${m.growthRate?` · +${m.growthRate}%/mo`:''}${m.velocityCap?` · cap ${m.velocityCap}`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;position:absolute;top:7px;right:7px;opacity:0;transition:opacity .15s" class="card-actions">
+        <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="openEditMember('${m.id}')">✎</button>
+        <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px;color:var(--danger)" onclick="deleteMember('${m.id}')">✕</button>
+      </div>
+    </div>`).join('');
+
+  // Project list
+  const pl=document.getElementById('projectList');
+  if(projects.length===0){pl.innerHTML='<div class="empty"><strong>No projects</strong>Add one above.</div>';return;}
+  const activeFilter=filterEl.value;
+  const visible=activeFilter?projects.filter(p=>p.pipeline===activeFilter):projects;
+  const grouped={};
+  for(const p of visible){const k=p.pipeline||'(No pipeline)';if(!grouped[k])grouped[k]=[];grouped[k].push(p);}
+  pl.innerHTML=Object.entries(grouped).map(([pl2,ps])=>`
+    <div style="margin-bottom:3px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:3px 2px 5px">${pl2}</div>
+      ${ps.map(p=>{
+        const deps=projects.filter(q=>q.blocks&&q.blocks.includes(p.id));
+        const roleStr=(p.roles||[]).map(r=>`${r.role} ${r.pct}%`).join(', ');
+        return `<div class="card${selectedId===p.id?' selected':''}" onclick="selectProject(${p.id})">
+          <div style="position:absolute;top:7px;right:7px;display:flex;gap:4px;opacity:0;transition:opacity .15s" class="card-actions">
+            <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();openEditProject(${p.id})">✎</button>
+            <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px;color:var(--danger)" onclick="event.stopPropagation();deleteProject(${p.id})">✕</button>
+          </div>
+          <div class="card-hdr"><div class="dot" style="background:${p.color}"></div>
+            <div class="card-name">${p.name}</div>
+            <div class="card-sub">${p.points||'?'}pts</div></div>
+          <div class="card-meta">
+            <span class="badge">P${p.priority}</span>
+            <span class="badge">M${p.earliestStart+1}+</span>
+            ${roleStr?`<span class="badge role">${roleStr}</span>`:''}
+            ${deps.length?`<span class="badge dep">↳ ${deps.map(d=>d.name.split(' ')[0]).join(', ')}</span>`:''}
+          </div></div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+function renderGantt(){
+  const{scheduled,monthUsed,totalCapPerMonth,horizon}=scheduleWithDeps();
+
+  let html=`<div class="gantt-wrap"><div class="gantt-hdr"><div class="gantt-lbl">Project</div><div class="gantt-months">`;
+  for(let m=0;m<horizon;m++) html+=`<div class="gantt-mo" style="min-width:54px">${getMonthLabel(m)}</div>`;
+  html+=`</div></div>`;
+
+  // Capacity heatmap row
+  html+=`<div class="gantt-row"><div class="gantt-row-lbl"><div class="pname" style="color:var(--muted);font-size:10px">TEAM CAP</div></div><div class="gantt-tl" style="height:12px">`;
+  for(let m=0;m<horizon;m++){
+    const used=monthUsed[m]||0;
+    const pct=totalCapPerMonth>0?Math.min(100,(used/totalCapPerMonth)*100):0;
+    const over=used>totalCapPerMonth;
+    html+=`<div class="gcol" style="left:${(m/horizon)*100}%"></div>`;
+    html+=`<div title="${getMonthLabel(m)}: ${Math.round(used)}/${totalCapPerMonth}pts" style="position:absolute;left:${(m/horizon)*100}%;width:${(1/horizon)*100}%;height:8px;top:2px;background:${over?'var(--danger)':'var(--accent)'};opacity:${.12+pct/100*.75};border-radius:2px;"></div>`;
+  }
+  html+=`</div></div>`;
+
+  // Commitments section
+  if(commitments.length>0){
+    html+=`<div class="gantt-row" style="margin-top:10px;margin-bottom:1px">
+      <div class="gantt-row-lbl"><div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Commitments</div></div>
+      <div class="gantt-tl" style="height:16px;border-bottom:1px solid var(--border)"></div></div>`;
+    for(const c of commitments){
+      const start=Math.max(0,c.startMonth||0);
+      const end=Math.min(horizon-1,c.endMonth??horizon-1);
+      if(start>=horizon) continue;
+      const left=(start/horizon)*100;
+      const width=((end-start+1)/horizon)*100;
+      const totalPts=c.allocations.reduce((s,a)=>s+a.ptsPerMonth,0);
+      const memberNames=c.allocations.map(a=>{const m=teamMembers.find(t=>t.id===a.memberId);return m?m.name:'?';}).join(', ');
+      html+=`<div class="gantt-row">
+        <div class="gantt-row-lbl">
+          <div class="pname" style="color:var(--muted)">${c.name}</div>
+          <div class="psub">${totalPts}pts/mo · ${memberNames}</div>
+        </div>
+        <div class="gantt-tl">`;
+      for(let m=0;m<horizon;m++) html+=`<div class="gcol" style="left:${(m/horizon)*100}%"></div>`;
+      html+=`<div class="gantt-bar" style="left:${left}%;width:${Math.min(width,100-left)}%;background:${c.color};opacity:0.75;border:1px dashed rgba(255,255,255,0.15)" title="${c.name}: M${start+1}–M${end+1}, ${totalPts}pts/mo">${c.name}</div>`;
+      html+=`</div></div>`;
+    }
+  }
+
+  // Group by pipeline
+  const sortedP=[...projects].sort((a,b)=>{
+    const pa=a.pipeline||'zzz',pb=b.pipeline||'zzz';
+    return pa!==pb?pa.localeCompare(pb):a.priority-b.priority||a.id-b.id;
+  });
+  const groups={};
+  for(const p of sortedP){const k=p.pipeline||'(No pipeline)';if(!groups[k])groups[k]=[];groups[k].push(p);}
+
+  for(const[pipeline,ps] of Object.entries(groups)){
+    html+=`<div class="gantt-row" style="margin-top:8px;margin-bottom:1px">
+      <div class="gantt-row-lbl"><div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">${pipeline}</div></div>
+      <div class="gantt-tl" style="height:16px;border-bottom:1px solid var(--border)"></div></div>`;
+
+    for(const p of ps){
+      const s=scheduled[p.id];
+      if(!s||!s.months.length) continue;
+      const segs=s.months;
+      const firstM=segs[0].month, lastM=segs[segs.length-1].month;
+      const left=(firstM/horizon)*100, width=((lastM-firstM+1)/horizon)*100;
+
+      // Assigned member avatars
+      const assignedIds=new Set();
+      Object.values(s.alloc||{}).forEach(mo=>Object.keys(mo).forEach(id=>assignedIds.add(id)));
+      const assignedMembers=teamMembers.filter(m=>assignedIds.has(m.id));
+      const avatars=assignedMembers.slice(0,4).map(m=>`<span title="${m.name} (${m.role})" style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${m.color}33;color:${m.color};font-family:var(--display);font-weight:700;font-size:9px;text-align:center;line-height:16px;margin-left:-3px;border:1px solid var(--bg)">${m.name[0]}</span>`).join('');
+
+      html+=`<div class="gantt-row">
+        <div class="gantt-row-lbl">
+          <div class="pname">${p.name}</div>
+          <div class="psub">${p.points}pts · P${p.priority}${s.noMembers&&s.noMembers.length?` ⚠ no ${s.noMembers.join(',')}`:''}</div>
+        </div>
+        <div class="gantt-tl">`;
+      for(let m=0;m<horizon;m++) html+=`<div class="gcol" style="left:${(m/horizon)*100}%"></div>`;
+      if(firstM<horizon){
+        html+=`<div class="gantt-bar" style="left:${left}%;width:${Math.min(width,100-left)}%;background:${p.color};opacity:.85" title="${p.name}: ${segs.length} months">
+          ${p.name.split(' ')[0]}${s.overflow?` ⚠`:''}
+        </div>`;
+        // Avatar strip above bar
+        html+=`<div style="position:absolute;left:calc(${left}% + 2px);top:-2px;display:flex">${avatars}</div>`;
+      }
+      if(s.overflow) html+=`<div style="position:absolute;right:0;top:7px;font-family:var(--mono);font-size:10px;color:var(--warn)">⚠ ${s.overflow}pts unmet</div>`;
+      html+=`</div></div>`;
+    }
+  }
+
+  // Deps legend
+  const depPairs=[];
+  for(const p of projects) if(p.blocks&&p.blocks.length) for(const bid of p.blocks){const bl=projects.find(x=>x.id===bid);if(bl)depPairs.push({from:p,to:bl});}
+  if(depPairs.length){
+    html+=`<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)"><div class="sec" style="font-size:13px;margin:0 0 7px">Dependencies</div>`;
+    for(const{from,to} of depPairs) html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:4px"><span style="font-family:var(--mono);color:${from.color}">${from.name}</span><span style="color:var(--muted)">→ must finish before</span><span style="font-family:var(--mono);color:${to.color}">${to.name}</span></div>`;
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+  document.getElementById('ganttContent').innerHTML=html;
+}
+
+function renderTeam(){
+  const{scheduled,memberMonthlyUsed,memberEffectiveVelocity,horizon}=scheduleWithDeps();
+  let html='';
+
+  if(teamMembers.length===0){
+    document.getElementById('teamContent').innerHTML='<div class="empty"><strong>No team members</strong>Add people in the sidebar.</div>';
+    return;
+  }
+
+  // Per-member capacity view
+  html+=`<div class="sec">Team Capacity by Member</div>`;
+  for(const mem of teamMembers){
+    html+=`<div class="month-row">
+      <div class="month-lbl" style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:${mem.color}22;color:${mem.color};font-family:var(--display);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center">${mem.name[0]}</div>
+        <div><div style="font-family:var(--display);font-weight:700;font-size:13px">${mem.name}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">${mem.role} · ${mem.velocity}pts/mo base${mem.growthRate?` · +${mem.growthRate}%/mo`:''}${mem.velocityCap?` · cap ${mem.velocityCap}`:''}</div></div>
+      </div>
+      <div style="overflow-x:auto;margin-top:10px">
+        <div style="display:flex;gap:4px;min-width:max-content">`;
+    for(let m=0;m<horizon;m++){
+      const effVel = memberEffectiveVelocity[mem.id]?.[m] ?? mem.velocity;
+      const used=Math.min(memberMonthlyUsed[mem.id][m], effVel);
+      const pct=effVel>0?(used/effVel)*100:0;
+      const over=memberMonthlyUsed[mem.id][m]>effVel;
+      const fill=over?'var(--danger)':pct>85?'var(--warn)':'var(--accent)';
+      const cmtPts=commitments.filter(c=>m>=c.startMonth&&m<=(c.endMonth??999))
+        .reduce((s,c)=>{const a=c.allocations.find(a=>a.memberId===mem.id);return s+(a?a.ptsPerMonth:0);},0);
+      const cmtPct=effVel>0?Math.min(100,(cmtPts/effVel)*100):0;
+      // Which projects this month?
+      const active=projects.filter(p=>{
+        const s=scheduled[p.id];
+        return s&&s.alloc&&s.alloc[m]&&s.alloc[m][mem.id]>0;
+      });
+      const cmtNames=commitments.filter(c=>m>=c.startMonth&&m<=(c.endMonth??999)&&c.allocations.find(a=>a.memberId===mem.id)).map(c=>c.name).join(', ');
+      const tip=`${active.map(p=>`${p.name}: ${Math.round((scheduled[p.id].alloc[m][mem.id]||0)*10)/10}pts`).join('\n')}${cmtNames?'\n'+cmtNames+': '+cmtPts+'pts (commitment)':''}`.trim()||'idle';
+      const effLabel=mem.growthRate?` (${Math.round(effVel)})`:'';
+      html+=`<div title="${getMonthLabel(m)}\n${Math.round(used+cmtPts)}/${Math.round(effVel)}pts${effLabel}\n${tip}" style="width:44px;flex-shrink:0">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;margin-bottom:2px">${getMonthLabel(m)}</div>
+        <div style="height:48px;background:var(--border);border-radius:4px;overflow:hidden;position:relative">
+          <div style="position:absolute;bottom:0;width:100%;height:${pct}%;background:${fill};opacity:.8;border-radius:4px;"></div>
+          ${cmtPct>0?`<div style="position:absolute;bottom:${pct}%;width:100%;height:${cmtPct}%;background:#475569;opacity:.9;"></div>`:''}
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:${over?'var(--danger)':'var(--muted)'};text-align:center;margin-top:2px">${Math.round(used+cmtPts)}${mem.growthRate?`<br><span style="color:var(--accent);opacity:.7">${Math.round(effVel)}</span>`:''}</div>
+        <div style="display:flex;flex-direction:column;gap:1px;margin-top:2px">
+          ${active.map(p=>`<div style="height:3px;border-radius:2px;background:${p.color};opacity:.8" title="${p.name}"></div>`).join('')}
+          ${cmtNames?`<div style="height:3px;border-radius:2px;background:#475569;opacity:.8" title="${cmtNames}"></div>`:''}
+        </div>
+      </div>`;
+    }
+    html+=`</div></div></div>`;
+  }
+
+  // Role capacity summary
+  html+=`<div class="sec" style="margin-top:24px">Capacity by Role</div>`;
+  const roleList=roles();
+  if(roleList.length===0){html+=`<div style="color:var(--muted);font-size:12px">No roles defined.</div>`;}
+  else{
+    html+=`<table><thead><tr><th>Role</th><th>Members</th><th>Total vel/mo</th>`;
+    for(let m=0;m<Math.min(horizon,6);m++) html+=`<th>${getMonthLabel(m)}</th>`;
+    html+=`</tr></thead><tbody>`;
+    for(const role of roleList){
+      const mems=membersByRole(role);
+      const vel=roleVelocity(role);
+      html+=`<tr><td style="font-family:var(--display);font-weight:600">${role}</td><td style="font-family:var(--mono)">${mems.map(m=>m.name).join(', ')}</td><td style="font-family:var(--mono)">${vel}</td>`;
+      for(let m=0;m<Math.min(horizon,6);m++){
+        const used=mems.reduce((s,mem)=>s+(memberMonthlyUsed[mem.id]&&memberMonthlyUsed[mem.id][m]||0),0);
+        const over=used>vel;
+        html+=`<td style="font-family:var(--mono);color:${over?'var(--danger)':used/vel>.85?'var(--warn)':'var(--text)'}">${Math.round(used)}/${vel}</td>`;
+      }
+      html+=`</tr>`;
+    }
+    html+=`</tbody></table>`;
+  }
+
+  document.getElementById('teamContent').innerHTML=html;
+}
+
+function renderSummary(){
+  const{scheduled,monthUsed,totalCapPerMonth,horizon}=scheduleWithDeps();
+  const totalPts=projects.reduce((s,p)=>s+(p.points||0),0);
+  const overflowing=projects.filter(p=>scheduled[p.id]?.overflow).length;
+  const noMemberProjects=projects.filter(p=>scheduled[p.id]?.noMembers?.length>0);
+  const availPts=totalCapPerMonth*horizon;
+
+  let html=`<div class="sum-grid">
+    <div class="sum-card"><div class="val">${projects.length}</div><div class="lbl">Projects</div></div>
+    <div class="sum-card"><div class="val">${teamMembers.length}</div><div class="lbl">Team members</div></div>
+    <div class="sum-card"><div class="val">${commitments.length}</div><div class="lbl">Commitments</div></div>
+    <div class="sum-card"><div class="val">${totalPts}</div><div class="lbl">Total effort (pts)</div></div>
+    <div class="sum-card"><div class="val">${availPts}</div><div class="lbl">Team capacity (${horizon}mo)</div></div>
+    <div class="sum-card"><div class="val" style="color:${overflowing?'var(--warn)':'var(--success)'}">${overflowing}</div><div class="lbl">Undeliverable</div></div>
+  </div>`;
+
+  if(commitments.length>0){
+    html+=`<div class="sec">Commitments</div>
+    <table><thead><tr><th>Name</th><th>Period</th><th>Members</th><th>Pts/month</th><th>Total pts consumed</th></tr></thead><tbody>`;
+    for(const c of commitments){
+      const duration=(c.endMonth??0)-(c.startMonth||0)+1;
+      const totalCmtPts=c.allocations.reduce((s,a)=>s+a.ptsPerMonth,0)*duration;
+      const memberStr=c.allocations.map(a=>{const m=teamMembers.find(t=>t.id===a.memberId);return m?`${m.name} (${a.ptsPerMonth}pts)`:'?';}).join(', ');
+      html+=`<tr>
+        <td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${c.color};display:inline-block"></span>${c.name}</span></td>
+        <td style="font-family:var(--mono)">${getMonthLabel(c.startMonth||0)} – ${getMonthLabel(c.endMonth??0)}</td>
+        <td style="font-size:11px">${memberStr}</td>
+        <td style="font-family:var(--mono)">${c.allocations.reduce((s,a)=>s+a.ptsPerMonth,0)}</td>
+        <td style="font-family:var(--mono)">${totalCmtPts}</td>
+      </tr>`;
+    }
+    html+=`</tbody></table>`;
+  }
+
+  if(noMemberProjects.length){
+    html+=`<div class="alert alert-warn">⚠ Projects with missing role members: ${noMemberProjects.map(p=>`${p.name} (needs: ${scheduled[p.id].noMembers.join(', ')})`).join('; ')}</div>`;
+  }
+
+  html+=`<div class="sec">Project Schedule</div>
+  <table><thead><tr>
+    <th>Project</th><th>Pipeline</th><th>Roles</th><th>Pts</th><th>Start</th><th>End</th><th>Duration</th><th>Assigned to</th><th>Status</th>
+  </tr></thead><tbody>`;
+
+  const sortedP=[...projects].sort((a,b)=>{
+    const pa=a.pipeline||'zzz',pb=b.pipeline||'zzz';
+    return pa!==pb?pa.localeCompare(pb):a.priority-b.priority||a.id-b.id;
+  });
+  let lastPl=null;
+  for(const p of sortedP){
+    const s=scheduled[p.id];
+    if(!s) continue;
+    const segs=s.months;
+    const first=segs.length?segs[0].month:null;
+    const last=segs.length?segs[segs.length-1].month:null;
+    const dur=first!==null?(last-first+1):0;
+    const pl=p.pipeline||'(No pipeline)';
+    if(pl!==lastPl){
+      html+=`<tr><td colspan="9" style="padding:9px 7px 3px;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">${pl}</td></tr>`;
+      lastPl=pl;
+    }
+    // Assigned members
+    const assignedIds=new Set();
+    Object.values(s.alloc||{}).forEach(mo=>Object.keys(mo).forEach(id=>assignedIds.add(id)));
+    const names=teamMembers.filter(m=>assignedIds.has(m.id)).map(m=>`<span style="color:${m.color}">${m.name}</span>`).join(', ');
+    const roleStr=(p.roles||[]).map(r=>`${r.role} ${r.pct}%`).join(', ');
+    const statusColor=s.overflow?'var(--warn)':'var(--success)';
+    const status=s.overflow?`⚠ ${s.overflow}pts unmet`:'✓ Scheduled';
+
+    html+=`<tr>
+      <td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${p.color};display:inline-block"></span>${p.name}</span></td>
+      <td style="font-family:var(--mono);color:var(--muted)">${p.pipeline||'—'}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">${roleStr||'—'}</td>
+      <td style="font-family:var(--mono)">${p.points}</td>
+      <td style="font-family:var(--mono)">${first!==null?getMonthLabel(first):'—'}</td>
+      <td style="font-family:var(--mono)">${last!==null?getMonthLabel(last):'—'}</td>
+      <td style="font-family:var(--mono)">${dur?dur+'mo':'—'}</td>
+      <td style="font-size:11px">${names||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:${statusColor}">${status}</td>
+    </tr>`;
+  }
+  html+=`</tbody></table>`;
+  document.getElementById('summaryContent').innerHTML=html;
+}
+
+// ─── Role rows in add-project form ────────────────────────────────────────────
+function addRoleRow(){
+  const container=document.getElementById('roleRows');
+  const row=document.createElement('div');
+  row.className='role-row';
+  row.innerHTML=`
+    <select style="font-size:12px;padding:5px 7px">${roles().map(r=>`<option>${r}</option>`).join('')||'<option>Developer</option>'}</select>
+    <input type="number" value="100" min="1" max="100" placeholder="%" style="font-size:12px;padding:5px 7px">
+    <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" style="padding:3px 6px;font-size:14px;color:var(--danger)">✕</button>`;
+  container.appendChild(row);
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function addMember(){
+  const name=document.getElementById('tmName').value.trim();
+  const role=document.getElementById('tmRole').value.trim();
+  if(!name||!role){return;}
+  const vel=parseInt(document.getElementById('tmVelocity').value)||10;
+  const col=PALETTE[(teamMembers.length)%PALETTE.length];
+  const growthRate=parseFloat(document.getElementById('tmGrowthRate').value)||0;
+  const velocityCapRaw=document.getElementById('tmVelocityCap').value.trim();
+  const velocityCap=velocityCapRaw?parseFloat(velocityCapRaw):null;
+  teamMembers.push({id:'t'+(nextTmId++),name,role,velocity:vel,color:col,growthRate,velocityCap});
+  document.getElementById('tmName').value='';
+  document.getElementById('tmGrowthRate').value=0;
+  document.getElementById('tmVelocityCap').value='';
+  document.getElementById('tmVelocity').value=10;
+  render();
+}
+
+function deleteMember(id){
+  teamMembers=teamMembers.filter(m=>m.id!==id);
+  render();
+}
+
+function addProject(){
+  const name=document.getElementById('newName').value.trim();
+  if(!name){document.getElementById('newName').focus();return;}
+
+  // Collect role rows
+  const roleRowEls=document.querySelectorAll('#roleRows .role-row');
+  const rolesSplit=[];
+  let pctSum=0;
+  roleRowEls.forEach(row=>{
+    const role=row.querySelector('select').value;
+    const pct=parseInt(row.querySelector('input').value)||0;
+    if(role&&pct>0){rolesSplit.push({role,pct});pctSum+=pct;}
+  });
+  // Normalise to 100
+  if(pctSum>0&&pctSum!==100) rolesSplit.forEach(r=>r.pct=Math.round(r.pct/pctSum*100));
+
+  const blocks=[...document.querySelectorAll('#depBlocksList input:checked')].map(el=>parseInt(el.value));
+
+  // Derive total points from role splits & team velocity (simple: use sum of role-member velocities)
+  // Default: 20 pts if no team
+  const totalPts = rolesSplit.length>0 && teamMembers.length>0
+    ? Math.round(rolesSplit.reduce((s,r)=>{
+        const vel=membersByRole(r.role).reduce((a,m)=>a+m.velocity,0)||10;
+        return s+(vel*r.pct/100);
+      },0)*2)  // ~2 months worth as a default
+    : 20;
+
+  projects.push({
+    id:nextId++,
+    name,
+    pipeline:document.getElementById('newPipeline').value.trim()||'',
+    priority:parseInt(document.getElementById('newPriority').value)||1,
+    earliestStart:parseInt(document.getElementById('newEarliestStart').value)||0,
+    color:document.getElementById('newColor').value,
+    blocks,
+    roles:rolesSplit,
+    points:totalPts,
+  });
+
+  document.getElementById('newName').value='';
+  document.getElementById('newPipeline').value='';
+  document.getElementById('newPriority').value=1;
+  document.getElementById('newEarliestStart').value=0;
+  document.getElementById('roleRows').innerHTML='';
+  addRoleRow();
+  render();
+}
+
+function deleteProject(id){
+  projects=projects.filter(p=>p.id!==id);
+  for(const p of projects) p.blocks=(p.blocks||[]).filter(bid=>bid!==id);
+  if(selectedId===id)selectedId=null;
+  render();
+}
+
+function selectProject(id){selectedId=selectedId===id?null:id;render();}
+
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('view-'+name).classList.add('active');
+}
+
+// ─── CSV ──────────────────────────────────────────────────────────────────────
+function handleCsvDrop(e){
+  e.preventDefault();document.getElementById('csvDropZone').style.borderColor='var(--border)';
+  const file=e.dataTransfer.files[0];if(file)parseCSV(file);
+}
+function handleCsvFile(input){const file=input.files[0];if(file)parseCSV(file);input.value='';}
+
+function parseCSV(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const errEl=document.getElementById('csvError');errEl.style.display='none';
+    try{
+      const lines=text.trim().split(/\r?\n/);
+      if(lines.length<2)throw new Error('CSV needs a header row and at least one project.');
+      const hdrs=lines[0].split(',').map(h=>h.trim().toLowerCase());
+      const idx=k=>hdrs.indexOf(k);
+      if(idx('name')<0)throw new Error('Missing required column: name');
+
+      const imported=[];const errors=[];
+      for(let i=1;i<lines.length;i++){
+        const line=lines[i].trim();if(!line)continue;
+        const cols=parseCSVLine(line);
+        const name=cols[idx('name')]?.trim();
+        if(!name){errors.push(`Row ${i+1}: missing name`);continue;}
+        // Parse roles: "Developer:60;Designer:40"
+        let rolesSplit=[];
+        const rolesRaw=idx('roles')>=0?cols[idx('roles')]?.trim():'';
+        if(rolesRaw){
+          rolesRaw.split(';').forEach(part=>{
+            const[role,pct]=part.split(':');
+            if(role&&pct)rolesSplit.push({role:role.trim(),pct:parseInt(pct)||0});
+          });
+        }
+        // Derive points
+        const pts=idx('points')>=0&&cols[idx('points')]?.trim()?parseInt(cols[idx('points')]):20;
+        imported.push({
+          _name:name,
+          pipeline:idx('pipeline')>=0?cols[idx('pipeline')]?.trim()||'':'',
+          points:pts,
+          priority:idx('priority')>=0?(parseInt(cols[idx('priority')])||1):1,
+          earliestStart:idx('earliest_start')>=0?(parseInt(cols[idx('earliest_start')])||0):0,
+          color:idx('color')>=0&&cols[idx('color')]?.trim()?cols[idx('color')].trim():PALETTE[imported.length%PALETTE.length],
+          _blocksNames:idx('blocks')>=0?cols[idx('blocks')]?.split(';').map(s=>s.trim()).filter(Boolean):[],
+          roles:rolesSplit,
+        });
+      }
+      if(imported.length===0)throw new Error('No valid projects. '+errors.join('; '));
+      const newP=imported.map((p,i)=>({...p,id:nextId+i}));
+      nextId+=newP.length;
+      for(const p of newP){
+        p.blocks=(p._blocksNames||[]).map(bn=>{const f=newP.find(q=>q._name?.toLowerCase()===bn.toLowerCase());return f?f.id:null;}).filter(Boolean);
+        p.name=p._name;delete p._name;delete p._blocksNames;
+      }
+      projects=newP;selectedId=null;
+      if(errors.length){errEl.textContent=`Imported ${projects.length} projects. Skipped: ${errors.join('; ')}`;errEl.style.display='block';}
+      render();
+    }catch(err){errEl.textContent='⚠ '+err.message;errEl.style.display='block';}
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVLine(line){
+  const cols=[];let cur='',inQ=false;
+  for(const ch of line){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){cols.push(cur);cur='';}else{cur+=ch;}}
+  cols.push(cur);return cols;
+}
+
+function downloadTemplate(){
+  const csv=[
+    'name,pipeline,points,priority,earliest_start,color,blocks,roles',
+    'Discovery & Research,Infrastructure,8,1,0,#5b7fff,,Developer:60;Designer:40',
+    'Platform Upgrade,Infrastructure,20,2,0,#a78bfa,,Developer:80;QA:20',
+    'Customer Portal,Customer Experience,15,3,2,#22c55e,Discovery & Research,Developer:60;Designer:40',
+    'Data Migration,Infrastructure,12,2,0,#f59e0b,Platform Upgrade,Developer:70;QA:30',
+    'Mobile App v2,Customer Experience,18,4,3,#ef4444,Customer Portal,Developer:50;Designer:30;QA:20',
+  ].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='programme-template.csv';a.click();
+}
+
+function clearProjects(){
+  if(projects.length===0||confirm('Remove all projects?')){projects=[];selectedId=null;nextId=1;render();}
+}
+
+// ─── Team CSV ─────────────────────────────────────────────────────────────────
+function handleTeamCsvDrop(e){
+  e.preventDefault();document.getElementById('teamCsvDropZone').style.borderColor='var(--border)';
+  const file=e.dataTransfer.files[0];if(file)parseTeamCSV(file);
+}
+function handleTeamCsvFile(input){const file=input.files[0];if(file)parseTeamCSV(file);input.value='';}
+
+function parseTeamCSV(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const errEl=document.getElementById('teamCsvError');errEl.style.display='none';
+    try{
+      const lines=text.trim().split(/\r?\n/);
+      if(lines.length<2)throw new Error('CSV needs a header row and at least one member.');
+      const hdrs=lines[0].split(',').map(h=>h.trim().toLowerCase());
+      const idx=k=>hdrs.indexOf(k);
+      if(idx('name')<0)throw new Error('Missing required column: name');
+      if(idx('role')<0)throw new Error('Missing required column: role');
+
+      const imported=[];const errors=[];
+      for(let i=1;i<lines.length;i++){
+        const line=lines[i].trim();if(!line)continue;
+        const cols=parseCSVLine(line);
+        const name=cols[idx('name')]?.trim();
+        const role=cols[idx('role')]?.trim();
+        if(!name){errors.push(`Row ${i+1}: missing name`);continue;}
+        if(!role){errors.push(`Row ${i+1}: missing role`);continue;}
+        const velocity=idx('velocity')>=0&&cols[idx('velocity')]?.trim()?parseInt(cols[idx('velocity')]):10;
+        const color=idx('color')>=0&&cols[idx('color')]?.trim()?cols[idx('color')].trim():PALETTE[imported.length%PALETTE.length];
+        const growthRate=idx('growth_rate')>=0&&cols[idx('growth_rate')]?.trim()?parseFloat(cols[idx('growth_rate')]):0;
+        const velocityCapRaw=idx('velocity_cap')>=0?cols[idx('velocity_cap')]?.trim():'';
+        const velocityCap=velocityCapRaw?parseFloat(velocityCapRaw):null;
+        imported.push({id:'t'+(nextTmId++),name,role,velocity:isNaN(velocity)?10:velocity,color,growthRate,velocityCap});
+      }
+      if(imported.length===0)throw new Error('No valid members found. '+errors.join('; '));
+      teamMembers=imported;
+      if(errors.length){errEl.textContent=`Imported ${teamMembers.length} members. Skipped: ${errors.join('; ')}`;errEl.style.display='block';}
+      render();
+    }catch(err){errEl.textContent='⚠ '+err.message;errEl.style.display='block';}
+  };
+  reader.readAsText(file);
+}
+
+function downloadTeamTemplate(){
+  const csv=[
+    'name,role,velocity,growth_rate,velocity_cap,color',
+    'Alice,Developer,12,1.67,,#5b7fff',
+    'Bob,Developer,10,2,50,#a78bfa',
+    'Carla,Designer,8,0,,#22c55e',
+    'David,QA,9,0,,#f59e0b',
+    'Emma,Developer,11,0,,#ef4444',
+  ].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='team-template.csv';a.click();
+}
+
+function clearTeam(){
+  if(teamMembers.length===0||confirm('Remove all team members?')){teamMembers=[];nextTmId=1;render();}
+}
+
+// ─── Edit Member Modal ────────────────────────────────────────────────────────
+let editingMemberId = null;
+
+function openEditMember(id) {
+  const m = teamMembers.find(m => m.id === id);
+  if (!m) return;
+  editingMemberId = id;
+  document.getElementById('em-name').value = m.name;
+  document.getElementById('em-role').value = m.role;
+  document.getElementById('em-velocity').value = m.velocity;
+  document.getElementById('em-growthRate').value = m.growthRate||0;
+  document.getElementById('em-velocityCap').value = m.velocityCap||'';
+  document.getElementById('em-color').value = m.color;
+  document.getElementById('em-roleList').innerHTML = roles().map(r => `<option value="${r}">`).join('');
+  document.getElementById('editMemberModal').style.display = 'flex';
+}
+
+function closeEditMember() {
+  document.getElementById('editMemberModal').style.display = 'none';
+  editingMemberId = null;
+}
+
+function saveEditMember() {
+  const m = teamMembers.find(m => m.id === editingMemberId);
+  if (!m) return;
+  const name = document.getElementById('em-name').value.trim();
+  const role = document.getElementById('em-role').value.trim();
+  if (!name || !role) return;
+  m.name = name;
+  m.role = role;
+  m.velocity = parseInt(document.getElementById('em-velocity').value) || m.velocity;
+  m.growthRate = parseFloat(document.getElementById('em-growthRate').value)||0;
+  const capRaw = document.getElementById('em-velocityCap').value.trim();
+  m.velocityCap = capRaw ? parseFloat(capRaw) : null;
+  m.color = document.getElementById('em-color').value;
+  closeEditMember();
+  render();
+}
+
+// ─── Edit Project Modal ───────────────────────────────────────────────────────
+let editingProjectId = null;
+
+function openEditProject(id) {
+  const p = projects.find(p => p.id === id);
+  if (!p) return;
+  editingProjectId = id;
+  document.getElementById('ep-name').value = p.name;
+  document.getElementById('ep-pipeline').value = p.pipeline || '';
+  document.getElementById('ep-priority').value = p.priority;
+  document.getElementById('ep-points').value = p.points || 20;
+  document.getElementById('ep-earliestStart').value = p.earliestStart || 0;
+  document.getElementById('ep-color').value = p.color;
+
+  // Populate pipeline datalist
+  const pipelines = [...new Set(projects.map(q => q.pipeline).filter(Boolean))].sort();
+  document.getElementById('ep-pipelineList').innerHTML = pipelines.map(pl => `<option value="${pl}">`).join('');
+
+  // Role rows
+  const rr = document.getElementById('ep-roleRows');
+  rr.innerHTML = '';
+  const existingRoles = p.roles && p.roles.length ? p.roles : [{role: roles()[0] || 'Developer', pct: 100}];
+  existingRoles.forEach(r => addEditRoleRow(r.role, r.pct));
+  if (rr.children.length === 0) addEditRoleRow();
+
+  // Blocks list — exclude self
+  document.getElementById('ep-blocksList').innerHTML = projects
+    .filter(q => q.id !== id)
+    .map(q => `<label class="msl-item">
+      <input type="checkbox" value="${q.id}" ${(p.blocks||[]).includes(q.id) ? 'checked' : ''}>
+      <span style="color:${q.color}">${q.name}</span></label>`).join('');
+
+  document.getElementById('editProjectModal').style.display = 'flex';
+}
+
+function closeEditProject() {
+  document.getElementById('editProjectModal').style.display = 'none';
+  editingProjectId = null;
+}
+
+function addEditRoleRow(roleVal, pctVal) {
+  const container = document.getElementById('ep-roleRows');
+  const row = document.createElement('div');
+  row.className = 'role-row';
+  const roleOptions = roles().length ? roles() : ['Developer'];
+  row.innerHTML = `
+    <select style="font-size:12px;padding:5px 7px">
+      ${roleOptions.map(r => `<option${r === roleVal ? ' selected' : ''}>${r}</option>`).join('')}
+    </select>
+    <input type="number" value="${pctVal || 100}" min="1" max="100" placeholder="%" style="font-size:12px;padding:5px 7px">
+    <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" style="padding:3px 6px;font-size:14px;color:var(--danger)">✕</button>`;
+  container.appendChild(row);
+}
+
+function saveEditProject() {
+  const p = projects.find(p => p.id === editingProjectId);
+  if (!p) return;
+  const name = document.getElementById('ep-name').value.trim();
+  if (!name) return;
+
+  // Collect role rows
+  const roleRowEls = document.querySelectorAll('#ep-roleRows .role-row');
+  const newRoles = [];
+  let pctSum = 0;
+  roleRowEls.forEach(row => {
+    const role = row.querySelector('select').value;
+    const pct = parseInt(row.querySelector('input').value) || 0;
+    if (role && pct > 0) { newRoles.push({role, pct}); pctSum += pct; }
+  });
+  if (pctSum > 0 && pctSum !== 100) newRoles.forEach(r => r.pct = Math.round(r.pct / pctSum * 100));
+
+  const blocks = [...document.querySelectorAll('#ep-blocksList input:checked')].map(el => parseInt(el.value));
+
+  p.name = name;
+  p.pipeline = document.getElementById('ep-pipeline').value.trim();
+  p.priority = parseInt(document.getElementById('ep-priority').value) || p.priority;
+  p.points = parseInt(document.getElementById('ep-points').value) || p.points;
+  p.earliestStart = parseInt(document.getElementById('ep-earliestStart').value) || 0;
+  p.color = document.getElementById('ep-color').value;
+  p.roles = newRoles;
+  p.blocks = blocks;
+
+  closeEditProject();
+  render();
+}
+
+// ─── Commitments ─────────────────────────────────────────────────────────────
+function memberSelectOpts(selectedId){
+  return teamMembers.map(m=>`<option value="${m.id}"${m.id===selectedId?' selected':''}>${m.name} (${m.role})</option>`).join('');
+}
+
+function allocRowHtml(containerId, memberId, pts){
+  return `<div style="display:grid;grid-template-columns:1fr 70px 28px;gap:5px;margin-bottom:5px;align-items:center">
+    <select class="cm-alloc-member" style="font-size:12px;padding:5px 7px">${memberSelectOpts(memberId)}</select>
+    <input type="number" value="${pts||2}" min="1" placeholder="pts" style="font-size:12px;padding:5px 7px">
+    <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" style="padding:3px 6px;font-size:14px;color:var(--danger)">✕</button>
+  </div>`;
+}
+
+function addCmAllocRow(){
+  const c=document.getElementById('cm-allocRows');
+  const d=document.createElement('div');
+  d.innerHTML=allocRowHtml('cm-allocRows', teamMembers[0]?.id, 2);
+  c.appendChild(d.firstElementChild);
+}
+
+function addCommitment(){
+  const name=document.getElementById('cm-name').value.trim();
+  if(!name) return;
+  const allocRows=[...document.querySelectorAll('#cm-allocRows > div')];
+  const allocations=allocRows.map(row=>({
+    memberId:row.querySelector('select').value,
+    ptsPerMonth:parseInt(row.querySelector('input').value)||2,
+  })).filter(a=>a.memberId);
+  commitments.push({
+    id:'c'+(nextCmId++),
+    name,
+    color:document.getElementById('cm-color').value,
+    startMonth:parseInt(document.getElementById('cm-start').value)||0,
+    endMonth:parseInt(document.getElementById('cm-end').value)||11,
+    allocations,
+  });
+  document.getElementById('cm-name').value='';
+  document.getElementById('cm-allocRows').innerHTML='';
+  addCmAllocRow();
+  render();
+}
+
+function deleteCommitment(id){
+  commitments=commitments.filter(c=>c.id!==id);
+  render();
+}
+
+// Edit commitment modal
+let editingCommitId=null;
+
+function openEditCommit(id){
+  const c=commitments.find(c=>c.id===id);
+  if(!c) return;
+  editingCommitId=id;
+  document.getElementById('ec-name').value=c.name;
+  document.getElementById('ec-color').value=c.color;
+  document.getElementById('ec-start').value=c.startMonth||0;
+  document.getElementById('ec-end').value=c.endMonth??11;
+  const rows=document.getElementById('ec-allocRows');
+  rows.innerHTML='';
+  (c.allocations||[]).forEach(a=>{
+    const d=document.createElement('div');
+    d.innerHTML=allocRowHtml('ec-allocRows',a.memberId,a.ptsPerMonth);
+    rows.appendChild(d.firstElementChild);
+  });
+  if(rows.children.length===0) addEcAllocRow();
+  document.getElementById('editCommitModal').style.display='flex';
+}
+
+function addEcAllocRow(){
+  const c=document.getElementById('ec-allocRows');
+  const d=document.createElement('div');
+  d.innerHTML=allocRowHtml('ec-allocRows',teamMembers[0]?.id,2);
+  c.appendChild(d.firstElementChild);
+}
+
+function closeEditCommit(){
+  document.getElementById('editCommitModal').style.display='none';
+  editingCommitId=null;
+}
+
+function saveEditCommit(){
+  const c=commitments.find(c=>c.id===editingCommitId);
+  if(!c) return;
+  const name=document.getElementById('ec-name').value.trim();
+  if(!name) return;
+  const allocRows=[...document.querySelectorAll('#ec-allocRows > div')];
+  c.name=name;
+  c.color=document.getElementById('ec-color').value;
+  c.startMonth=parseInt(document.getElementById('ec-start').value)||0;
+  c.endMonth=parseInt(document.getElementById('ec-end').value)||11;
+  c.allocations=allocRows.map(row=>({
+    memberId:row.querySelector('select').value,
+    ptsPerMonth:parseInt(row.querySelector('input').value)||2,
+  })).filter(a=>a.memberId);
+  closeEditCommit();
+  render();
+}
+
+// ─── Commitments CSV ──────────────────────────────────────────────────────────
+function handleCmCsvDrop(e){
+  e.preventDefault();document.getElementById('cmCsvDropZone').style.borderColor='var(--border)';
+  const file=e.dataTransfer.files[0];if(file)parseCommitmentsCSV(file);
+}
+function handleCmCsvFile(input){const file=input.files[0];if(file)parseCommitmentsCSV(file);input.value='';}
+
+function parseCommitmentsCSV(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const errEl=document.getElementById('cmCsvError');errEl.style.display='none';
+    try{
+      const lines=text.trim().split(/\r?\n/);
+      if(lines.length<2) throw new Error('CSV needs a header row and at least one commitment.');
+      const hdrs=lines[0].split(',').map(h=>h.trim().toLowerCase());
+      const idx=k=>hdrs.indexOf(k);
+      if(idx('name')<0) throw new Error('Missing required column: name');
+
+      const imported=[];const errors=[];
+      for(let i=1;i<lines.length;i++){
+        const line=lines[i].trim();if(!line) continue;
+        const cols=parseCSVLine(line);
+        const name=cols[idx('name')]?.trim();
+        if(!name){errors.push(`Row ${i+1}: missing name`);continue;}
+
+        // Parse allocations: "Alice:2;Bob:3" — match by member name
+        const allocations=[];
+        const allocRaw=idx('allocations')>=0?cols[idx('allocations')]?.trim():'';
+        if(allocRaw){
+          allocRaw.split(';').forEach(part=>{
+            const[mname,pts]=part.split(':').map(s=>s?.trim());
+            if(!mname) return;
+            const mem=teamMembers.find(m=>m.name.toLowerCase()===mname.toLowerCase());
+            if(mem) allocations.push({memberId:mem.id,ptsPerMonth:parseInt(pts)||2});
+            else errors.push(`Row ${i+1}: member "${mname}" not found — skipped`);
+          });
+        }
+
+        imported.push({
+          id:'c'+(nextCmId++),
+          name,
+          color:idx('color')>=0&&cols[idx('color')]?.trim()?cols[idx('color')].trim():'#334155',
+          startMonth:idx('start_month')>=0?(parseInt(cols[idx('start_month')])||0):0,
+          endMonth:idx('end_month')>=0?(parseInt(cols[idx('end_month')])||11):11,
+          allocations,
+        });
+      }
+      if(imported.length===0) throw new Error('No valid commitments found. '+errors.join('; '));
+      commitments=imported;
+      if(errors.length){errEl.textContent=`Imported ${commitments.length} commitments. Notes: ${errors.join('; ')}`;errEl.style.display='block';}
+      render();
+    }catch(err){errEl.textContent='⚠ '+err.message;errEl.style.display='block';}
+  };
+  reader.readAsText(file);
+}
+
+function downloadCommitmentsTemplate(){
+  const csv=[
+    'name,start_month,end_month,color,allocations',
+    'Support Rota,0,11,#334155,Alice:2;Bob:2',
+    'Legacy Maintenance,0,5,#1e3a5f,Emma:3',
+  ].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='commitments-template.csv';a.click();
+}
+
+function clearCommitments(){
+  if(commitments.length===0||confirm('Remove all commitments?')){commitments=[];render();}
+}
+
+// ─── Export CSV ───────────────────────────────────────────────────────────────
+function exportScheduleCSV(){
+  const{scheduled,horizon}=scheduleWithDeps();
+  const rows=[['Project','Pipeline','Roles','Points','Start','End','Duration (mo)','Assigned To','Status']];
+  const sorted=[...projects].sort((a,b)=>{
+    const pa=a.pipeline||'zzz',pb=b.pipeline||'zzz';
+    return pa!==pb?pa.localeCompare(pb):a.priority-b.priority||a.id-b.id;
+  });
+  for(const p of sorted){
+    const s=scheduled[p.id]; if(!s) continue;
+    const segs=s.months;
+    const first=segs.length?segs[0].month:null;
+    const last=segs.length?segs[segs.length-1].month:null;
+    const dur=first!==null?(last-first+1):0;
+    const assignedIds=new Set();
+    Object.values(s.alloc||{}).forEach(mo=>Object.keys(mo).forEach(id=>assignedIds.add(id)));
+    const names=teamMembers.filter(m=>assignedIds.has(m.id)).map(m=>m.name).join('; ');
+    const roleStr=(p.roles||[]).map(r=>`${r.role}:${r.pct}%`).join('; ');
+    const status=s.overflow?`Partial (${s.overflow}pts unmet)`:'Scheduled';
+    rows.push([
+      p.name, p.pipeline||'', roleStr, p.points,
+      first!==null?getMonthLabel(first):'',
+      last!==null?getMonthLabel(last):'',
+      dur||'', names, status
+    ]);
+  }
+  // Team sheet rows
+  const teamRows=[['',''],['Team Members',''],['Name','Role','Velocity','Growth Rate (%/mo)','Velocity Cap']];
+  for(const m of teamMembers) teamRows.push([m.name,m.role,m.velocity,m.growthRate||0,m.velocityCap||'']);
+
+  const allRows=[...rows,...teamRows];
+  const csv=allRows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='programme-schedule.csv';a.click();
+}
+
+// ─── Export Excel (XLSX via SheetJS CDN) ─────────────────────────────────────
+function exportScheduleXLSX(){
+  // Dynamically load SheetJS if not already loaded
+  if(!window.XLSX){
+    const s=document.createElement('script');
+    s.src='https://url.uk.m.mimecastprotect.com/s/_wwIC7L7liopwOEs8f5coZeSe?domain=cdnjs.cloudflare.com';
+    s.onload=()=>_doExportXLSX();
+    document.head.appendChild(s);
+  } else { _doExportXLSX(); }
+}
+
+function _doExportXLSX(){
+  const{scheduled,horizon}=scheduleWithDeps();
+  const sorted=[...projects].sort((a,b)=>{
+    const pa=a.pipeline||'zzz',pb=b.pipeline||'zzz';
+    return pa!==pb?pa.localeCompare(pb):a.priority-b.priority||a.id-b.id;
+  });
+
+  // Schedule sheet
+  const schedData=[['Project','Pipeline','Roles','Points','Start','End','Duration (mo)','Assigned To','Status']];
+  for(const p of sorted){
+    const s=scheduled[p.id]; if(!s) continue;
+    const segs=s.months;
+    const first=segs.length?segs[0].month:null;
+    const last=segs.length?segs[segs.length-1].month:null;
+    const dur=first!==null?(last-first+1):0;
+    const assignedIds=new Set();
+    Object.values(s.alloc||{}).forEach(mo=>Object.keys(mo).forEach(id=>assignedIds.add(id)));
+    const names=teamMembers.filter(m=>assignedIds.has(m.id)).map(m=>m.name).join(', ');
+    const roleStr=(p.roles||[]).map(r=>`${r.role} ${r.pct}%`).join(', ');
+    schedData.push([p.name,p.pipeline||'',roleStr,p.points,
+      first!==null?getMonthLabel(first):'',last!==null?getMonthLabel(last):'',
+      dur||'',names,s.overflow?`Partial (${s.overflow}pts unmet)`:'Scheduled']);
+  }
+
+  // Team sheet
+  const teamData=[['Name','Role','Base Velocity','Growth Rate (%/mo)','Velocity Cap','Colour']];
+  for(const m of teamMembers) teamData.push([m.name,m.role,m.velocity,m.growthRate||0,m.velocityCap||'',m.color]);
+
+  // Capacity by month sheet
+  const capHeader=['Month','Total Capacity',...teamMembers.map(m=>m.name)];
+  const capData=[capHeader];
+  for(let mo=0;mo<horizon;mo++){
+    const row=[getMonthLabel(mo), teamMembers.reduce((s,m)=>s+m.velocity,0)];
+    for(const m of teamMembers) row.push(Math.round((scheduleWithDeps().memberEffectiveVelocity[m.id]?.[mo]??m.velocity)*10)/10);
+    capData.push(row);
+  }
+
+  // Commitments sheet
+  const cmtData=[['Name','Start Month','End Month','Member','Pts/Month']];
+  for(const c of commitments){
+    for(const a of c.allocations){
+      const mem=teamMembers.find(t=>t.id===a.memberId);
+      cmtData.push([c.name,getMonthLabel(c.startMonth||0),getMonthLabel(c.endMonth??0),mem?mem.name:'?',a.ptsPerMonth]);
+    }
+  }
+
+  const wb=window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(schedData),'Schedule');
+  window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(teamData),'Team');
+  window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(capData),'Capacity');
+  if(cmtData.length>1) window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(cmtData),'Commitments');
+  window.XLSX.writeFile(wb,'programme-schedule.xlsx');
+}
+
+// ─── Save / Load JSON ─────────────────────────────────────────────────────────
+function saveJSON(){
+  const state={
+    version:1,
+    settings:{
+      horizon:document.getElementById('horizonMonths').value,
+      startMonth:document.getElementById('startMonth').value,
+    },
+    teamMembers,projects,commitments,scenarios,
+    meta:{savedAt:new Date().toISOString()}
+  };
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`programme-${new Date().toISOString().slice(0,10)}.json`;a.click();
+}
+
+function loadJSON(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const state=JSON.parse(e.target.result);
+      if(!state.version) throw new Error('Unrecognised file format.');
+      if(state.settings){
+        if(state.settings.horizon) document.getElementById('horizonMonths').value=state.settings.horizon;
+        if(state.settings.startMonth) document.getElementById('startMonth').value=state.settings.startMonth;
+      }
+      if(state.teamMembers) teamMembers=state.teamMembers;
+      if(state.projects)    projects=state.projects;
+      if(state.commitments) commitments=state.commitments;
+      if(state.scenarios)   scenarios=state.scenarios;
+      // Restore counters
+      nextId=Math.max(nextId,...projects.map(p=>typeof p.id==='number'?p.id+1:nextId));
+      nextTmId=Math.max(1,...teamMembers.map(m=>parseInt(m.id?.replace('t',''))||0)+1);
+      nextCmId=Math.max(1,...commitments.map(c=>parseInt(c.id?.replace('c',''))||0)+1);
+      selectedId=null;
+      render();
+      alert(`Loaded: ${projects.length} projects, ${teamMembers.length} members, ${commitments.length} commitments, ${scenarios.length} scenario(s).`);
+    }catch(err){ alert('Failed to load: '+err.message); }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+// ─── Scenarios ────────────────────────────────────────────────────────────────
+function captureScenario(){
+  const name=prompt('Name this scenario:',`Scenario ${scenarios.length+1}`);
+  if(!name) return;
+  const snap={
+    name,
+    capturedAt:new Date().toISOString(),
+    settings:{
+      horizon:document.getElementById('horizonMonths').value,
+      startMonth:document.getElementById('startMonth').value,
+    },
+    teamMembers:JSON.parse(JSON.stringify(teamMembers)),
+    projects:JSON.parse(JSON.stringify(projects)),
+    commitments:JSON.parse(JSON.stringify(commitments)),
+  };
+  scenarios.push(snap);
+  render();
+  // Switch to scenario tab
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelector('[onclick="switchTab(\'scenario\',this)"]').classList.add('active');
+  document.getElementById('view-scenario').classList.add('active');
+}
+
+function deleteScenario(idx){
+  scenarios.splice(idx,1);
+  renderScenarios();
+}
+
+function scheduleForSnapshot(snap){
+  // Run scheduler against a snapshot's data without mutating global state
+  const savedProjects=projects,savedTeam=teamMembers,savedCommitments=commitments;
+  const savedHorizon=document.getElementById('horizonMonths').value;
+  const savedStart=document.getElementById('startMonth').value;
+  projects=snap.projects; teamMembers=snap.teamMembers; commitments=snap.commitments;
+  document.getElementById('horizonMonths').value=snap.settings.horizon;
+  document.getElementById('startMonth').value=snap.settings.startMonth;
+  const result=scheduleWithDeps();
+  projects=savedProjects; teamMembers=savedTeam; commitments=savedCommitments;
+  document.getElementById('horizonMonths').value=savedHorizon;
+  document.getElementById('startMonth').value=savedStart;
+  return result;
+}
+
+function renderScenarios(){
+  const el=document.getElementById('scenarioContent');
+  if(scenarios.length===0){
+    el.innerHTML=`<div class="empty"><strong>No scenarios yet</strong>
+      Click <strong>📸 Snapshot</strong> in the header to capture the current plan as a named scenario. Snapshots are compared side-by-side here.
+    </div>`;
+    return;
+  }
+
+  const horizon=parseInt(document.getElementById('horizonMonths').value)||12;
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div class="sec" style="margin:0">Scenario Comparison (${scenarios.length} snapshot${scenarios.length>1?'s':''})</div>
+    <button class="btn btn-ghost btn-sm" onclick="scenarios=[];renderScenarios()">✕ Clear all</button>
+  </div>`;
+
+  // For each scenario render a mini Gantt
+  for(let si=0;si<scenarios.length;si++){
+    const snap=scenarios[si];
+    const{scheduled,monthUsed,totalCapPerMonth}=scheduleForSnapshot(snap);
+    const snapHorizon=parseInt(snap.settings.horizon)||12;
+    const overflowing=snap.projects.filter(p=>scheduled[p.id]?.overflow).length;
+
+    html+=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="flex:1">
+          <div style="font-family:var(--display);font-weight:700;font-size:15px">${snap.name}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Captured ${new Date(snap.capturedAt).toLocaleString()} · ${snap.projects.length} projects · ${snap.teamMembers.length} members · horizon ${snapHorizon}mo</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-family:var(--mono);font-size:11px;color:${overflowing?'var(--warn)':'var(--success)'}">${overflowing} overflow${overflowing!==1?'s':''}</span>
+          <button class="btn btn-ghost btn-sm" onclick="restoreScenario(${si})">↩ Restore</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteScenario(${si})">✕</button>
+        </div>
+      </div>`;
+
+    // Mini Gantt
+    html+=`<div style="overflow-x:auto"><div style="min-width:600px">`;
+    // Month headers
+    html+=`<div style="display:flex;margin-bottom:4px"><div style="width:150px;flex-shrink:0"></div>`;
+    for(let m=0;m<snapHorizon;m++){
+      const base=snap.settings.startMonth||`${new Date().getFullYear()}-01`;
+      const[y,mo]=base.split('-').map(Number);
+      const d=new Date(y,mo-1+m,1);
+      const lbl=d.toLocaleString('default',{month:'short',year:'2-digit'});
+      html+=`<div style="flex:1;min-width:40px;font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center">${lbl}</div>`;
+    }
+    html+=`</div>`;
+
+    // Capacity row
+    html+=`<div style="display:flex;margin-bottom:3px;align-items:center"><div style="width:150px;flex-shrink:0;font-family:var(--mono);font-size:9px;color:var(--muted)">CAPACITY</div>`;
+    html+=`<div style="flex:1;position:relative;height:8px">`;
+    for(let m=0;m<snapHorizon;m++){
+      const used=monthUsed[m]||0;
+      const pct=totalCapPerMonth>0?Math.min(100,(used/totalCapPerMonth)*100):0;
+      html+=`<div style="position:absolute;left:${(m/snapHorizon)*100}%;width:${(1/snapHorizon)*100}%;height:100%;background:var(--accent);opacity:${.1+pct/100*.8};border-radius:1px"></div>`;
+    }
+    html+=`</div></div>`;
+
+    // Project rows sorted by pipeline then priority
+    const sortedP=[...snap.projects].sort((a,b)=>{
+      const pa=a.pipeline||'zzz',pb=b.pipeline||'zzz';
+      return pa!==pb?pa.localeCompare(pb):a.priority-b.priority||a.id-b.id;
+    });
+    let lastPl=null;
+    for(const p of sortedP){
+      const s=scheduled[p.id]; if(!s||!s.months.length) continue;
+      const segs=s.months;
+      const firstM=segs[0].month,lastM=segs[segs.length-1].month;
+      const left=(firstM/snapHorizon)*100,width=((lastM-firstM+1)/snapHorizon)*100;
+      const pl=p.pipeline||'';
+      if(pl!==lastPl){
+        html+=`<div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:5px 0 2px 0;margin-left:150px;border-top:1px solid var(--border)">${pl}</div>`;
+        lastPl=pl;
+      }
+      html+=`<div style="display:flex;align-items:center;margin-bottom:3px">
+        <div style="width:150px;flex-shrink:0;font-family:var(--display);font-weight:600;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px" title="${p.name}">${p.name}</div>
+        <div style="flex:1;position:relative;height:18px">
+          ${firstM<snapHorizon?`<div style="position:absolute;left:${left}%;width:${Math.min(width,100-left)}%;height:14px;top:2px;border-radius:3px;background:${p.color};opacity:.85;display:flex;align-items:center;padding:0 4px;font-family:var(--mono);font-size:9px;color:#fff;white-space:nowrap;overflow:hidden">${p.name.split(' ')[0]}${s.overflow?' ⚠':''}</div>`:''}
+        </div>
+      </div>`;
+    }
+    html+=`</div></div></div>`;
+  }
+
+  // Side-by-side delta table if ≥2 scenarios
+  if(scenarios.length>=2){
+    html+=`<div class="sec" style="margin-top:8px">Project Δ — comparing last two snapshots</div>`;
+    const snapA=scenarios[scenarios.length-2],snapB=scenarios[scenarios.length-1];
+    const resA=scheduleForSnapshot(snapA),resB=scheduleForSnapshot(snapB);
+    // All project names across both
+    const allNames=[...new Set([...snapA.projects.map(p=>p.name),...snapB.projects.map(p=>p.name)])].sort();
+    html+=`<table><thead><tr>
+      <th>Project</th>
+      <th>${snapA.name} — Start</th><th>${snapA.name} — End</th>
+      <th>${snapB.name} — Start</th><th>${snapB.name} — End</th>
+      <th>Δ Start</th><th>Δ End</th>
+    </tr></thead><tbody>`;
+    for(const name of allNames){
+      const pA=snapA.projects.find(p=>p.name===name);
+      const pB=snapB.projects.find(p=>p.name===name);
+      const sA=pA?resA.scheduled[pA.id]:null;
+      const sB=pB?resB.scheduled[pB.id]:null;
+      const getLabel=(snap,sched,proj)=>{
+        if(!proj||!sched||!sched.months.length) return '—';
+        const m=sched.months[0].month;
+        const base=snap.settings.startMonth||`${new Date().getFullYear()}-01`;
+        const[y,mo]=base.split('-').map(Number);
+        return new Date(y,mo-1+m,1).toLocaleString('default',{month:'short',year:'2-digit'});
+      };
+      const getEndLabel=(snap,sched,proj)=>{
+        if(!proj||!sched||!sched.months.length) return '—';
+        const m=sched.months[sched.months.length-1].month;
+        const base=snap.settings.startMonth||`${new Date().getFullYear()}-01`;
+        const[y,mo]=base.split('-').map(Number);
+        return new Date(y,mo-1+m,1).toLocaleString('default',{month:'short',year:'2-digit'});
+      };
+      const startA=sA?.months[0]?.month??null,startB=sB?.months[0]?.month??null;
+      const endA=sA?.months[sA.months.length-1]?.month??null,endB=sB?.months[sB.months.length-1]?.month??null;
+      const dStart=startA!==null&&startB!==null?startB-startA:null;
+      const dEnd=endA!==null&&endB!==null?endB-endA:null;
+      const deltaStyle=(d)=>d===null?'color:var(--muted)':d>0?'color:var(--warn)':d<0?'color:var(--success)':'color:var(--muted)';
+      const deltaLabel=(d)=>d===null?'—':d===0?'no change':(d>0?`+${d}mo later`:`${d}mo earlier`);
+      const onlyInA=pA&&!pB,onlyInB=!pA&&pB;
+      html+=`<tr style="${onlyInA?'opacity:.5':onlyInB?'background:rgba(91,127,255,.04)':''}">
+        <td style="font-family:var(--display);font-weight:600;font-size:11px">${name}${onlyInA?' <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">(removed)</span>':''}${onlyInB?' <span style="font-family:var(--mono);font-size:9px;color:var(--accent)">(new)</span>':''}</td>
+        <td style="font-family:var(--mono);font-size:11px">${getLabel(snapA,sA,pA)}</td>
+        <td style="font-family:var(--mono);font-size:11px">${getEndLabel(snapA,sA,pA)}</td>
+        <td style="font-family:var(--mono);font-size:11px">${getLabel(snapB,sB,pB)}</td>
+        <td style="font-family:var(--mono);font-size:11px">${getEndLabel(snapB,sB,pB)}</td>
+        <td style="font-family:var(--mono);font-size:11px;${deltaStyle(dStart)}">${deltaLabel(dStart)}</td>
+        <td style="font-family:var(--mono);font-size:11px;${deltaStyle(dEnd)}">${deltaLabel(dEnd)}</td>
+      </tr>`;
+    }
+    html+=`</tbody></table>`;
+  }
+
+  el.innerHTML=html;
+}
+
+function restoreScenario(idx){
+  const snap=scenarios[idx];
+  if(!confirm(`Restore "${snap.name}"? This will replace your current plan.`)) return;
+  teamMembers=JSON.parse(JSON.stringify(snap.teamMembers));
+  projects=JSON.parse(JSON.stringify(snap.projects));
+  commitments=JSON.parse(JSON.stringify(snap.commitments));
+  document.getElementById('horizonMonths').value=snap.settings.horizon;
+  document.getElementById('startMonth').value=snap.settings.startMonth;
+  selectedId=null;
+  render();
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
+
